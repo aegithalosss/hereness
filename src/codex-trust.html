@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>在呢 | Hereness · Codex 信任步骤</title>
+
+    <style>
+
+      :root {
+        --bg: #f4f4f4;
+        --panel: #e9e9e9;
+        --panel-2: #ffffff;
+        --line: #cfcfcf;
+        --text: #1f1f1f;
+        --muted: #6d6d6d;
+        --btn: #d9d9d9;
+        --accent: #0075ff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #23252b;
+          --panel: #2b2e36;
+          --panel-2: #33363f;
+          --line: #3d414b;
+          --text: #e9ebf0;
+          --muted: #9aa1ad;
+          --btn: #3a3e48;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 14px 18px 18px;
+        background: var(--bg);
+        color: var(--text);
+        font: 13px/1.6 "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+      }
+      h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+      p.lead { color: var(--muted); margin: 0 0 14px; }
+      ol { padding-left: 22px; margin: 0 0 14px; }
+      li { margin-bottom: 10px; }
+      kbd {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-size: 12px;
+        font-family: inherit;
+      }
+      code {
+        background: var(--panel);
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-family: Consolas, ui-monospace, monospace;
+        font-size: 12px;
+      }
+      .cmd {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        margin-top: 8px;
+      }
+
+      #cmd-text {
+        flex: 1;
+        min-width: 0;
+        padding: 6px 10px;
+        border: 1px solid var(--line);
+        white-space: pre-wrap;
+        word-break: break-all;
+        overflow: visible;
+        display: block;
+        user-select: text;
+      }
+
+      .btn,
+      .btn-primary {
+        border: 1px solid var(--line);
+        color: var(--text);
+        font: inherit;
+        white-space: nowrap;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .btn { height: 30px; padding: 0 12px; font-size: 13px; background: var(--panel-2); }
+      .btn-primary { height: 40px; min-width: 140px; padding: 0 24px; font-size: 15px; background: var(--btn); }
+      .btn:hover,
+      .btn-primary:hover { border-color: var(--muted); }
+
+      #copy { background: var(--accent); border-color: var(--accent); color: #fff; display: inline-grid; place-items: center; }
+      #copy:hover { border-color: var(--text); }
+      #copy > span { grid-area: 1 / 1; }
+      #copy > span[hidden] { display: block; visibility: hidden; }
+      .note {
+        color: var(--muted);
+        font-size: 12px;
+        border-top: 1px solid var(--line);
+        padding-top: 10px;
+        margin: 14px 0 0;
+      }
+      .footer { margin-top: 16px; display: flex; justify-content: flex-end; }
+    </style>
+  </head>
+  <body>
+    <h1 id="t-title">让 Codex 信任桌宠（还差一步）</h1>
+    <p class="lead" id="t-lead">
+      Codex 规定：它要你亲手「信任」过这些钩子才会运行。就四步，跟着做：
+    </p>
+    <ol>
+      <li id="t-s1">
+        打开<b>命令提示符</b>：按键盘的 <kbd>Win</kbd> 键，输入 <code>cmd</code>，回车。
+      </li>
+      <li>
+        <span id="t-s2"></span>
+        <span class="cmd">
+          <code id="cmd-text"></code>
+          <button id="copy" class="btn" type="button"><span id="copy-label">复制</span><span id="copied" hidden>已复制</span></button>
+        </span>
+      </li>
+      <li id="t-s3">
+        等它打开后，输入 <code>/hooks</code> 回车，再按 <kbd>t</kbd>（= 全部信任）。
+      </li>
+      <li id="t-s4">
+        关掉这个黑窗口；再把 <b>Codex 桌面版完全关掉、重新打开</b>，开一个新对话。
+      </li>
+    </ol>
+    <p class="note" id="t-note">
+      · 命令会自动找到 codex.exe，不用管它在哪个文件夹（Codex 更新后会换位置，命令照样管用）。<br />
+      · 以后 Codex 更新过，如果桌宠没反应，就再做一遍信任。
+    </p>
+    <div class="footer">
+      <button id="ok" class="btn-primary" type="button">知道了</button>
+    </div>
+
+    <script>
+      const CMD =
+        'for /f "delims=" %i in (\'dir /s /b "%LOCALAPPDATA%\\OpenAI\\Codex\\bin\\codex.exe"\') do "%i" --no-daemon';
+
+      const T = {
+        zh: {
+          title: "让 Codex 信任桌宠（还差一步）",
+          lead: "Codex 规定：它要你亲手「信任」过这些钩子才会运行。就四步，跟着做：",
+          s1: "打开<b>命令提示符</b>：按键盘的 <kbd>Win</kbd> 键，输入 <code>cmd</code>，回车。",
+          s2: "把下面这条命令<b>粘贴</b>进去，回车（点「复制」按钮，就不用自己敲）：",
+          s3: "等它打开后，输入 <code>/hooks</code> 回车，再按 <kbd>t</kbd>（= 全部信任）。",
+          s4: "关掉这个黑窗口；再把 <b>Codex 桌面版完全关掉、重新打开</b>，开一个新对话。",
+          note:
+            "· 命令会自动找到 codex.exe，不用管它在哪个文件夹（Codex 更新后会换位置，命令照样管用）。<br />" +
+            "· 以后 Codex 更新过，如果桌宠没反应，就再做一遍信任。",
+          copy: "复制",
+          copied: "已复制",
+          ok: "知道了",
+        },
+        en: {
+          title: "Let Codex trust the pet (one more step)",
+          lead: "Codex only runs these hooks after you trust them yourself. Four steps:",
+          s1: "Open <b>Command Prompt</b>: press <kbd>Win</kbd>, type <code>cmd</code>, hit Enter.",
+          s2: "Paste the command below and hit Enter (use the Copy button — no typing needed):",
+          s3: "When it opens, type <code>/hooks</code> and hit Enter, then press <kbd>t</kbd> (trust all).",
+          s4: "Close that window, then <b>fully quit and reopen the Codex desktop app</b> and start a new chat.",
+          note:
+            "· The command finds codex.exe by itself — the folder changes when Codex updates, the command still works.<br />" +
+            "· After a Codex update, if the pet stops reacting, do this again.",
+          copy: "Copy",
+          copied: "Copied",
+          ok: "Got it",
+        },
+      };
+
+      const $ = (id) => document.getElementById(id);
+
+      const systemLang = () => ((navigator.language || "").toLowerCase().startsWith("en") ? "en" : "zh");
+      function applyLang(l) {
+        const t = T[l] || T.zh;
+        document.documentElement.lang = l === "en" ? "en" : "zh-CN";
+        document.title = l === "en"
+          ? "在呢 | Hereness · Codex trust steps"
+          : "在呢 | Hereness · Codex 信任步骤";
+        $("t-title").textContent = t.title;
+        $("t-lead").textContent = t.lead;
+        $("t-s1").innerHTML = t.s1;
+        $("t-s2").innerHTML = t.s2;
+        $("t-s3").innerHTML = t.s3;
+        $("t-s4").innerHTML = t.s4;
+        $("t-note").innerHTML = t.note;
+        $("copy-label").textContent = t.copy;
+        $("copied").textContent = t.copied;
+        $("ok").textContent = t.ok;
+      }
+      const langFromPrefs = (p) => (p && p.language === "en" ? "en" : "zh");
+
+      applyLang(systemLang());
+      $("cmd-text").textContent = CMD;
+      if (window.__TAURI__ && window.__TAURI__.core) {
+        window.__TAURI__.core.invoke("prefs_get").then(langFromPrefs).then(applyLang).catch(() => {});
+        if (window.__TAURI__.event) {
+          window.__TAURI__.event.listen("prefs-changed", (e) => applyLang(langFromPrefs(e.payload)));
+        }
+      }
+
+      let copiedTimer = 0;
+      $("copy").addEventListener("click", async () => {
+        const write = window.__TAURI__ && window.__TAURI__.clipboardManager && window.__TAURI__.clipboardManager.writeText;
+        let ok = false;
+        if (write) {
+          ok = await write(CMD).then(() => true).catch(() => false);
+        }
+        if (!ok && navigator.clipboard) {
+          ok = await navigator.clipboard.writeText(CMD).then(() => true).catch(() => false);
+        }
+        if (!ok) {
+          const range = document.createRange();
+          range.selectNodeContents($("cmd-text"));
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          return;
+        }
+        $("copy-label").hidden = true;
+        $("copied").hidden = false;
+        clearTimeout(copiedTimer);
+        copiedTimer = setTimeout(() => {
+          $("copy-label").hidden = false;
+          $("copied").hidden = true;
+        }, 2000);
+      });
+
+      $("ok").addEventListener("click", () => {
+        if (window.__TAURI__) window.__TAURI__.window.getCurrentWindow().close();
+      });
+</script>
+  </body>
+</html>

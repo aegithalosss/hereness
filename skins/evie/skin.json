@@ -1,0 +1,93 @@
+{
+  "name": {
+    "zh": "Evie",
+    "en": "Evie"
+  },
+  "credits": [
+    "Art Direction & Editing: Aegithalos",
+    "AI Image Generation: ChatGPT"
+  ],
+  "pivot": [
+    200,
+    325
+  ],
+  "grab": [200, 90],
+  "sounds": {
+    "prompt": "Mia.mp3",
+    "thinking": "Miaawu.mp3",
+    "notify": "Notif/",
+    "poke": "HmmHa.mp3",
+    "sleep": "Purrrrrrr.mp3",
+    "lifted": "complain/",
+    "dropped": "complain/"
+  },
+  "shadow": {
+    "pivot": [
+      200,
+      332
+    ]
+  },
+  "overlays": {
+    "vfx_thinking_loading": {
+      "on": [
+        "thinking",
+        "overthinking"
+      ],
+      "pivot": [
+        196.1,
+        85.81
+      ]
+    },
+    "vfx_error_sweating": {
+      "on": ["error"],
+      "motion": "drip",
+      "ms": 1400,
+      "gap": 2600,
+      "distance": 36,
+      "curve": 6
+    },
+    "vfx_running_laptopLight": {
+      "on": ["running"],
+      "motion": "pulse",
+      "ms": 2800,
+      "min": 0.35
+    },
+    "vfx_running_gameboyLight": {
+      "on": ["running"],
+      "motion": "flicker",
+      "ms": 1300,
+      "min": 0.2,
+      "colors": ["#ffb3b3", "#b3c8ff"]
+    }
+  },
+  "rig": {
+    "idle": {
+      "pivots": {
+        "Tail1": [
+          203.5,
+          251
+        ],
+        "Tail2": [
+          186,
+          301.5
+        ],
+        "Tail3": [
+          137.3,
+          307
+        ],
+        "Tail4": [
+          97,
+          289
+        ],
+        "earL": [
+          230.7,
+          121.3
+        ],
+        "earR": [
+          176,
+          116.7
+        ]
+      }
+    }
+  }
+}

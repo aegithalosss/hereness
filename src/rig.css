@@ -1,0 +1,116 @@
+:root {
+  --tail-angle: 14deg;
+  --tail-amp-1: 0.35;
+  --tail-amp-2: 0.65;
+  --tail-amp-3: 1;
+  --tail-amp-4: 1.3;
+
+  --ear-angle: 10deg;
+  --ear-lean-angle: 12deg;
+  --poke-ear-angle: 20deg;
+  --poke-head-drop: 15px;
+  --poke-body-squash: 0.9;
+  --poke-pose-ms: 150ms;
+}
+
+#rig-earL {
+  --ear-sign: 1;
+}
+#rig-earR {
+  --ear-sign: -1;
+}
+
+#pet-rig {
+  position: absolute;
+  inset: 0;
+}
+#pet-rig[hidden] {
+  display: none;
+}
+
+.rig-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.rig-stage img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: 50% 100%;
+  pointer-events: none;
+}
+
+.rig-tail-node {
+  position: absolute;
+  inset: 0;
+}
+
+@keyframes rig-tail-whip {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(calc(var(--tail-angle) * var(--tail-seg-amp, 1)));
+  }
+}
+#rig-Tail1-node {
+  --tail-seg-amp: var(--tail-amp-1);
+}
+#rig-Tail2-node {
+  --tail-seg-amp: var(--tail-amp-2);
+}
+#rig-Tail3-node {
+  --tail-seg-amp: var(--tail-amp-3);
+}
+#rig-Tail4-node {
+  --tail-seg-amp: var(--tail-amp-4);
+}
+
+@keyframes rig-ear-twitch {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  35% {
+    transform: rotate(calc(var(--ear-angle) * var(--ear-sign, 1)));
+  }
+  70% {
+    transform: rotate(calc(var(--ear-angle) * var(--ear-sign, 1) * -0.3));
+  }
+}
+
+@keyframes rig-ear-lean-settle {
+  0% {
+    transform: rotate(calc(var(--ear-lean-angle) * var(--ear-sign, 1)));
+  }
+  40% {
+    transform: rotate(calc(var(--ear-lean-angle) * var(--ear-sign, 1) * 1.3));
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.m-rig-poke #rig-body {
+  transform: scaleY(var(--poke-body-squash));
+
+  transform-origin: var(--pivot-x, 50%) var(--pivot-y, 100%);
+  transition: transform var(--poke-pose-ms) ease-out;
+}
+.m-rig-poke #rig-face,
+.m-rig-poke #rig-EyelidTL,
+.m-rig-poke #rig-EyelidTR,
+.m-rig-poke #rig-EyelidBL,
+.m-rig-poke #rig-EyelidBR {
+  transform: translateY(var(--poke-head-drop));
+  transition: transform var(--poke-pose-ms) ease-out;
+}
+.m-rig-poke #rig-earL,
+.m-rig-poke #rig-earR {
+  transform: translateY(var(--poke-head-drop)) rotate(calc(var(--poke-ear-angle) * var(--ear-sign, 1)));
+  transition: transform var(--poke-pose-ms) ease-out;
+}

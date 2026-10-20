@@ -1,0 +1,20 @@
+{
+  "$comment": "DeepSeek API 分时计价规则：下面这些高峰时段之外全是半价。官网改规则时只换这个文件，程序不用动。",
+  "ruleUpdated": "2026-09-29",
+  "source": "https://api-docs.deepseek.com/quick_start/pricing/",
+  "peak": {
+    "$comment": "高峰：周一到周五（UTC 时间）的下面这些时段；周末全天半价。weekdays 用 Date.getUTCDay 的数：0=周日，1=周一……6=周六。",
+    "weekdays": [1, 2, 3, 4, 5],
+    "windows": [
+      ["01:00", "04:00"],
+      ["06:00", "10:00"]
+    ]
+  },
+  "holidays": {
+    "$comment": "中国法定节假日全天半价，按北京时间的日期判断。调休上班日（isOffDay=false）都落在周末，被上面的周末规则覆盖，不用单独处理。数据是 holiday-cn 项目的 JSON，放在 dir 里，按年份一个文件；某一年没有数据时按普通工作日算。",
+    "timezone": "Asia/Shanghai",
+    "utcOffsetMinutes": 480,
+    "dir": "data/holidays-cn",
+    "years": [2026, 2027]
+  }
+}

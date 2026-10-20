@@ -1,0 +1,80 @@
+# Lines starting with # are notes; the program skips them.
+# Format: key = text to show. Don't change the key on the left; only edit the text after the "=".
+# For a random line each time, separate options with |, e.g.  notify = Waiting for you | Take a look?
+# Leave the right side empty to use the line from "Default" instead.
+# Keep it short: the label under the cat is small, and long text gets cut off (about 12 characters or fewer looks best).
+
+# Name shown in Settings
+name = Meow
+
+# Done working, nothing to do
+idle = Mew~*
+
+# Right after you send a message (about 1 second)
+prompt = Mrrow! (=①ω①=)
+
+# The agent is thinking
+thinking = Mrr..
+
+# Thinking for a long time (the cross-eyed picture)
+crosseye = Mrraow(⊙_⊙)..
+
+# Reading files, searching, browsing the web
+reading = Mew!📖
+
+# Editing files, writing code
+typing = ฅ(^•ω•^)ฅ 
+
+# Running commands, waiting for results
+bash = (^•ω•^)Mew✧
+
+# Needs your approval, or has a question for you
+notify = (•̀ω•́ )Meow!
+
+# Hand still up after 2 minutes with no reply
+call = ( ˘•ω•˘ )Meow?
+
+# Finished
+done = ✧٩(ˊωˋ)و✧*
+
+# Something went wrong
+error = Meow meow？
+
+# Poked again and again, poked while turned away, or tired of waiting with a hand up
+angry = Hsss╰(⇀⌂↼‶)╯
+
+# After 3 minutes idle
+look1 = Meow~
+
+# Same as above
+look2 = Meow meow~
+
+# After 5 minutes idle
+look3 = Mew... |･ω･｀)
+
+# Same as above; sometimes turns its back on you
+look4 = Mew（＠´＿｀＠）
+
+# After 7 minutes idle
+yawn = Mrrp..Zz
+
+# After 10 minutes idle
+sleep1 = (-ｪ -)｡o
+
+# 15 minutes later
+sleep2 = (。-ω-)Zz..
+
+# 15 minutes later
+sleep3 = zZZzzz..
+
+# 15 minutes later
+sleep4 =  zZZzzZZZZzz..
+
+# Poked while asleep, or work arrives while asleep
+wake = \(´Д`)ﾉ Mrrah!!
+
+# Poked once while awake
+poke = Meow~ (｀⌣  ´ )ʃ
+
+# Being held and dragged around
+lifted = Mew?! ( ﾟдﾟ)

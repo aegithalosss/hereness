@@ -1,0 +1,14 @@
+{
+  "name": "hereness",
+  "private": true,
+  "version": "0.1.1",
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "acorn": "^8.19.0",
+    "pngjs": "^7.0.0"
+  }
+}

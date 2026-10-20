@@ -1,0 +1,40 @@
+{
+  "name": {
+    "zh": "雪人",
+    "en": "Xueren"
+  },
+  "pivot": [
+    200,
+    325
+  ],
+  "grab": [
+    200,
+    90
+  ],
+  "sounds": {
+    "prompt": "HmmHa.mp3",
+    "typing": "WwwMuuu.mp3",
+    "poke": "Miaawu.mp3",
+    "wake": "WwwMuuu.mp3",
+    "sleep": "Purrrrrrr.mp3",
+    "lifted": "complain/",
+    "dropped": "complain/"
+  },
+  "overlays": {
+    "vfx_thinking_loading": {
+      "on": [
+        "thinking"
+      ],
+      "pivot": [
+        188,
+        73
+      ]
+    }
+  },
+  "shadow": {
+    "pivot": [
+      200,
+      332
+    ]
+  }
+}

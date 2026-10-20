@@ -1,0 +1,119 @@
+#ds-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(20, 20, 24, 0.75);
+  color: #fff;
+  font: 12px/1.4 "Microsoft YaHei", system-ui, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+}
+#ds-badge img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+
+#ds-badge .ds-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #8a8f98;
+}
+#ds-badge.is-peak .ds-dot {
+  background: #ffa94d;
+}
+#ds-badge.is-offpeak .ds-dot {
+  background: #4dabf7;
+}
+#ds-badge .ds-next {
+  font-variant-numeric: tabular-nums;
+}
+
+#ds-detail {
+  position: fixed;
+
+  inset: 5px 5px 36px 5px;
+  z-index: 10;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(20, 20, 24, 0.94);
+  color: #fff;
+  font: 11px/1.55 "Microsoft YaHei", system-ui, sans-serif;
+  overflow-y: auto;
+  cursor: default;
+  pointer-events: auto;
+}
+
+#ds-detail::-webkit-scrollbar {
+  width: 4px;
+}
+#ds-detail::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+}
+#ds-detail .ds-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+#ds-detail .ds-close {
+  border: 0;
+  background: transparent;
+  color: #b9bec7;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+}
+#ds-detail .ds-close:hover {
+  color: #fff;
+}
+#ds-detail .ds-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+#ds-detail .ds-line b {
+  font-weight: 600;
+}
+#ds-detail .ds-week-title {
+  margin: 7px 0 3px;
+  color: #b9bec7;
+}
+#ds-detail .ds-week {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+#ds-detail .ds-week.today {
+  color: #ffd479;
+}
+#ds-detail .ds-week .ds-wd {
+  flex: 0 0 auto;
+}
+#ds-detail .ds-week .ds-times {
+  text-align: right;
+}
+#ds-detail .ds-note {
+  margin-top: 8px;
+  color: #b9bec7;
+}
+#ds-detail .ds-link {
+  color: #8ecbff;
+  text-decoration: underline;
+  cursor: pointer;
+}
+#ds-detail .ds-warn {
+  margin-top: 5px;
+  color: #ffb4a2;
+}

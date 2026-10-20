@@ -1,0 +1,157 @@
+Aegithalos Desktop Pet License
+Version 1.2
+Updated: October 19, 2026
+
+Copyright (c) 2026 Aegithalos.
+
+1. Scope and definitions
+
+“Licensor” means Aegithalos.
+
+“Project” means the desktop pet project originally published as `agent-desk-pet` and now distributed as 在呢 | Hereness, including its source code, executable software, character designs, artwork, edited or composite visuals, animations, bundled skins, configurations, text, documentation, and other materials made available under this license, together with the selection, coordination, arrangement, and human modification of those materials, but only to the extent that the Licensor owns or controls the rights necessary to license them.
+
+Materials expressly identified as governed by a separate license are excluded from this license and remain subject to their stated terms.
+
+“Modified Pet” means a modified version of the Project that continues to function as a standalone desktop pet. Changes to its name, appearance, features, or supported integrations do not, by themselves, make it an Other Product.
+
+“Other Product” means a product other than the Project or a Modified Pet, including a separate application, game, website, service, asset collection, pet collection, multi-pet platform, desktop launcher, or software library into which Project materials are incorporated or for which they are repurposed.
+
+Compatible content made for use with the Project or a Modified Pet is not an Other Product merely because it contains multiple characters, skins, or animations, or is shared through Steam Workshop.
+
+Using Project materials as an embedded character, skin, preset, component, or content pack within a separate product or platform does not qualify as a standalone Modified Pet.
+
+Merely distributing a standalone Modified Pet through a general-purpose repository or download platform does not, by itself, constitute incorporation into an Other Product.
+
+2. Free use, customization, and community creation
+
+Subject to and conditioned upon your compliance with this license, including Sections 3, 4, and 5, you may download, run, study, copy, and modify the Project without paying the Licensor.
+
+You may use the Project or a Modified Pet in personal, educational, professional, and business settings, including employment and freelance work.
+
+You may show it in screenshots, recordings, livestreams, demonstrations, and other media, including monetized media. Its appearance in such media does not, by itself, constitute incorporation into an Other Product or sale of the desktop pet.
+
+You may create compatible characters, skins, animations, and integrations, including by adapting Project materials, and share them free of charge for use with the Project or a Modified Pet.
+
+Sharing through Steam Workshop is permitted, subject to applicable platform terms. You must have the necessary rights in any third-party content you use or share.
+
+These permissions remain subject to Sections 3, 4, and 5.
+
+3. Free sharing, attribution, and creators’ rights
+
+You may distribute the Project, a Modified Pet, or compatible content containing Project materials, in source or executable form, without charging recipients.
+
+Copies of the Project or a Modified Pet must include this license and preserve applicable copyright, attribution, and third-party license notices.
+
+When sharing or distributing skins, animations, or other content under this license, you must preserve the original creator credits and any provided statements identifying human contributions or AI generation tools. You must not delete, replace, or misrepresent those credits or statements.
+
+If you modify someone else’s skin or animation and share or distribute the modified version, you must retain the original credits and add a separate credit in the form “Modified by: [your name or pseudonym]”, accurately identifying your role as the modifier. Additional credits may describe your changes. Credits may be reformatted or translated without changing their meaning or obscuring the original attribution.
+
+For compatible content packages containing Project materials, the applicable Project attribution and license information may be included in accompanying files or in the Steam Workshop item description, with a link to the full license. If such a package is redistributed outside that listing, the applicable information must accompany the redistributed copy.
+
+Independently created content that contains no Project materials does not require attribution to the Licensor as its artwork author.
+
+Modified versions must clearly identify themselves as modified and must not be presented as official releases by the Licensor. You must not claim authorship of the original Project or imply the Licensor’s endorsement.
+
+Recipients receive permission to use the original Project materials directly under this license. You must not offer those materials under terms that remove or contradict its restrictions.
+
+This license does not require publication of the source code of your modifications. Obligations imposed by third-party licenses remain applicable.
+
+You retain any rights you hold in your original contributions or community creations. Sharing compatible content or uploading it to Steam Workshop does not, under this license alone, transfer its ownership to the Licensor or authorize the Licensor to sell it. Separate platform terms and separate agreements remain applicable.
+
+This license does not authorize anyone to copy, modify, redistribute, or sell another creator’s independent work without the necessary permission.
+
+4. No unauthorized sale or monetization of the Project
+
+Without the Licensor’s prior written permission, you must not:
+
+- Sell, rent, or license the Project or a Modified Pet for a fee.
+- Require payment, a subscription, a purchase, or a mandatory donation to obtain or use the Project or a Modified Pet.
+- Include the Project or a Modified Pet as a paid component, purchase incentive, or benefit of a paid bundle, product, or service.
+- Embed advertising, sponsored placements, or affiliate promotions in the Project or a Modified Pet in exchange for payment, commissions, or other commercial benefit.
+- Add paid features or services to the Project or a Modified Pet, including paid cloud synchronization.
+- Sell presets, skins, animations, or other content that incorporates or adapts copyright-protected Project materials.
+- Accept payment to produce or deliver a customized version of the Project or a Modified Pet, or customized content incorporating copyright-protected Project materials, except for private skin commissions permitted below.
+
+These restrictions apply even if you rename the desktop pet, replace its artwork, modify its code, or retain attribution.
+
+Genuinely optional donations are permitted only when access and use remain free without donating. Donations must not unlock exclusive features, content, services, or early or timed-exclusive access to the Project, a Modified Pet, or content containing Project materials.
+
+The permission to use the desktop pet during employment or freelance work means permission to run it while performing that work. It does not authorize paid customization prohibited above.
+
+You may pay an artist to create or adapt skins for your own private use, including using Project materials. The artist may charge a commission fee and deliver the work to you, but the commissioned work must not be resold to other people.
+
+This license does not, by itself, restrict the sale of independently created artwork merely because it is compatible with the Project. Separate terms may apply to participation in particular distribution platforms or community channels.
+
+Advertising or sponsorship in a livestream or recording is not embedded advertising in the desktop pet merely because the desktop pet appears in that media.
+
+5. Other products require authorization
+
+Without the Licensor’s prior written permission, you must not incorporate, extract, adapt, or repurpose copyright-protected Project materials for an Other Product.
+
+This applies whether the Other Product is paid or free, commercial or noncommercial, publicly distributed or privately used. It covers protected code, artwork, animations, text, and other Project materials.
+
+The same requirement applies when materials are downloaded, imported, or loaded on demand from the Project’s repository or another source for use as built-in or optional content in an Other Product, including on a user’s device. Not bundling, hosting, or redistributing the materials yourself does not exempt that use.
+
+Running the standalone desktop pet alongside another application, or communicating with it through its interfaces, does not by itself constitute incorporation into an Other Product. Such use remains subject to Section 4.
+
+This license does not claim ownership of independently created materials or restrict unprotected ideas or uses permitted by applicable law without authorization.
+
+6. Ownership, branding, and third-party materials
+
+Ownership remains with the respective rights holders. This license does not transfer ownership.
+
+You may identify the Project and credit its author, but must not use names or logos to falsely suggest official status, sponsorship, or endorsement.
+
+Third-party libraries, dependencies, and materials, including bundled sound effects edited from third-party sources such as Pixabay, remain governed by their own licenses; see `THIRD_PARTY_ASSETS.md`. This license does not replace, narrow, or override permissions granted by those licenses.
+
+The Licensor retains the right to distribute and sell materials they own or are separately authorized to sell, and to grant separate permissions.
+
+For additional authorization, contact Aegithalos through:
+
+https://github.com/aegithalosss
+
+aegithalosss@gmail.com
+
+Permission must be obtained before undertaking a restricted activity. A request or an unanswered message is not permission.
+
+7. Contributions to the official Project
+
+Contributions submitted for incorporation into the official Project require the contributor’s explicit written agreement to the following grant before acceptance:
+
+The contributor retains ownership of their contribution and grants the Licensor a non-exclusive, worldwide, perpetual, irrevocable, royalty-free license to reproduce, use, modify, adapt, distribute, and sublicense that contribution as part of the Project and its derivatives, under different terms, including commercial terms.
+
+The contributor confirms that they have the rights and authority necessary to make this grant and must identify any third-party materials or licensing requirements included in the contribution.
+
+This grant does not override third-party rights or licenses.
+
+Publishing a fork, reporting a problem, sharing community content, or uploading a Workshop item does not by itself constitute agreement to this contribution grant.
+
+Explicit written agreement may be given electronically, for example by a comment on the pull request or submission stating: “I agree to Section 7 of the Aegithalos Desktop Pet License.” The Licensor may keep a record of that agreement.
+
+This section does not retroactively obtain rights in contributions previously received without such agreement.
+
+8. Disclaimer and limitation of liability
+
+The Project is provided “as is” and “as available”, without warranties of any kind, express or implied, including warranties of merchantability, fitness for a particular purpose, non-infringement, and uninterrupted or error-free operation, to the fullest extent permitted by applicable law. The Licensor does not promise continued support, updates, or compatibility with any particular software, including AI coding assistants.
+
+To the fullest extent permitted by applicable law, the Licensor is not liable for any direct, indirect, incidental, special, or consequential losses or damages, including loss of data, profits, or work, arising from use, modification, or distribution of the Project.
+
+Nothing in this license excludes liability or rights that applicable law does not allow to be excluded.
+
+9. Duration and termination
+
+Permissions continue for the duration of the applicable copyright, provided that you comply with this license.
+
+If you violate this license, your permissions terminate automatically.
+
+For your first violation, permissions are automatically reinstated if you fully remedy the violation within 30 days after receiving written notice of it from the Licensor. Reinstatement after a subsequent violation, or after that period expires, requires the Licensor’s written permission.
+
+Termination does not revoke the permissions of recipients who remain in compliance and does not eliminate obligations or liability arising from an earlier violation.
+
+All rights not expressly granted are reserved.
+
+10. General provisions
+
+If any provision of this license is held to be invalid or unenforceable, that provision will be enforced to the maximum extent permissible, and the remaining provisions will remain in full force and effect.
+
+The English text is the governing version. Translations are provided for convenience.
