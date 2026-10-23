@@ -6,7 +6,12 @@
 
 一只住在桌面上的小猫，跟着你的 AI 编程 agent（Claude Code、Codex 等）一起干活：它在敲代码、在思考、在等你批准、干完了，小猫都会让你知道。
 
+<img width="800" height="600" alt="01" src="https://github.com/user-attachments/assets/e0f43e6a-7b6a-4130-ae3d-2ba0c134cc66" />
+
+<img width="800" height="600" alt="02" src="https://github.com/user-attachments/assets/fdf08e45-c706-42af-937f-dbe8cca4a2e8" />
+
 想给小猫换一身自己画的皮肤，看[皮肤制作指南](docs/skin-guide.md)。
+
 
 ### 开始用
 
