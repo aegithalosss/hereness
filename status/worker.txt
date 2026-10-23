@@ -1,0 +1,67 @@
+# 一份文件放中英文，状态键与 Settings 图片文件名一致（不带 .png）。
+# 英文用同名 .en 行；没有译文共用另一行。所用行留空或两边都没有，用默认。
+# 用 | 隔开多句；同一显示状态里保留一句，换状态或重读后再挑。
+# One file, two languages. Keys match Settings image names without .png.
+# Add .en for English; a missing translation shares the other line.
+# Keep lines short: about 6 Chinese or 12 English characters.
+
+名字 = 打工猫
+name.en = Cat Worker
+
+idle = 在呢在呢 | 摸鱼中~ | 揣手手 | 待命喵
+idle.en = Loafing~ | On standby | Chilling | Here!
+
+onit = 收到喵！ | 来了来了 | 接单！ | 开工~
+onit.en = Copy that! | On it! | Gotcha! | Aye aye!
+
+thinking = 动脑筋… | 烧脑中 | 让我想想 | CPU微热
+thinking.en = Plotting.. | Thinking.. | Brain on | Hmm...
+
+overthinking = 脑子打结 | CPU冒烟 | 想得斗鸡眼 | 算麻了…
+overthinking.en = Brain fried | 100% CPU | Dizzy mew | So deep..
+
+reading = 翻资料~ | 偷看代码 | 扒拉文件 | 查卷宗
+reading.en = Snooping.. | Reading~ | Digging in | Scanning
+
+typing = 哒哒哒！ | 狂敲键盘 | 踩键盘中 | 顿悟编码
+typing.en = Paw-coding | Tap tap! | Clackity! | Cooking✧
+
+running = 跑起来了 | 等它跑完 | 盯终端… | 施法中✧
+running.en = Running.. | Brewing~ | Watching.. | Hold on~
+
+notify = 举小爪！ | 请签字~ | 拍板喵！ | 看我一眼
+notify.en = Paw up! | Sign pls~ | Boss? | Need ok!
+
+error = 翻车了喵 | 哎呀报错 | 踩坑了… | 炸毛！
+error.en = Oopsie.. | Bug alert! | Furballs! | Uh oh..
+
+poked = 戳我干嘛 | 收费十罐 | 别闹喵~ | 干嘛呀
+poked.en = Pay 1 treat | Hey! | Boop? | Busy here!
+
+bored = 发呆中… | 盯—— | 看风景 | 歪头杀~ | 有蝴蝶？ | 东张西望 | 没人理我 | 叹气喵… | 无聊抠爪 | 不理你了 | 看屁股吧 | 哼(｀ε´) | 留个背影
+bored.en = Staring.. | Daydream | Ooh, bug? | Head tilt~ | Looking.. | Anyone? | So bored.. | *Sigh* | Lonely mew | Cold butt | Hmph! | Talk 2 tail
+
+yawn = 哈欠~困 | 眼皮打架 | 电量不足
+yawn.en = *Yawn*~ | Low batts | Sleepy..
+
+wake = 垂死惊坐起 | 吓一跳喵！ | 谁叫我？！
+wake.en = I'm awake!! | Who's there | Huh?! Wha?!
+
+grab = 放我下来！ | 绑架小猫 | 悬空啦！ | 救命喵~
+grab.en = Put me down | Kidnapped! | Flying?! | Halp!!
+
+done = 搞定交差！ | 完美收工 | 求夸夸✧ | 下班喵~
+done.en = Nailed it! | All done✧ | Treat pls! | Shipped!
+
+angry = 莫挨老子 | 咬你哦！ | 哈气！！ | 喵拳警告
+angry.en = No touchy! | Hiss!! | Bite you! | Spicy cat
+
+sleep = 眯一会儿 | 小鸡啄米 | 浅眠中… | 呼噜呼噜 | 睡香香~ | 梦里捉鼠 | 雷打不动 | 猪猪睡眠 | 沉睡喵… | 摊成猫饼 | 四仰八叉 | 彻底融化
+sleep.en = Catnap.. | Dozing off | Snoozing | Purr..Zzz | Dreaming~ | Deep zzz | Dead asleep | Coma mode | Zzzzz... | Melted cat | Belly up~ | Flat pancake
+
+need_you = 等你拍板 | 举爪找你
+need_you.en = needs boss! | paw is up!
+
+# 原 call 已不再触发，保留原句供查阅。 / Retired call lines, kept as notes.
+# call = 爪举酸啦 | 人呢人呢 | 快理我喵 | 等花儿谢
+# call.en = Paw hurts.. | Hello?? | Notice me! | Still here

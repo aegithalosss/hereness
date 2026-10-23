@@ -1,79 +1,62 @@
-# 以 # 开头的行是说明，程序不读。
-# 写法：英文名 = 显示的字。英文名不要改，只改等号右边。
-# 想让它每次随机说一句：用 | 隔开，比如  notify = 我等你哦 | 快来看看嘛
-# 右边留空 = 这一句用"默认"版本的。
-# 尽量短：胶囊很小，太长会被截掉（中文大概 6 个字以内最好看）。
+# 一份文件放中英文，状态键与 Settings 图片文件名一致（不带 .png）。
+# 英文用同名 .en 行；没有译文共用另一行。所用行留空或两边都没有，用默认。
+# 用 | 隔开多句；同一显示状态里保留一句，换状态或重读后再挑。
+# One file, two languages. Keys match Settings image names without .png.
+# Add .en for English; a missing translation shares the other line.
+# Keep lines short: about 6 Chinese or 12 English characters.
 
 名字 = 喵呜
+name.en = Meow
 
-# 干完活、闲着的时候
-idle = 咪~*
+idle = 咪~* | 咪～(=ↀωↀ=) | 喵…
+idle.en = Mew~* | Mew~ (=ↀωↀ=) | Mrr...
 
-# 你刚发完话，约 1 秒
-prompt = 喵呜！
+onit = 喵呜！
+onit.en = Mrrow! (=①ω①=)
 
-# agent 在想
-thinking = 呼呣呼呣...
+thinking = 呼呣呼呣... | 嗯…喵？ | 想想喵(￣ω￣;)
+thinking.en = Mrr.. | Hmm...mew? | Mrr (￣ω￣;)
 
-# 想了很久（对眼那张图）
-crosseye = 喵哇..(⊙_◎)
+overthinking = 喵哇..(⊙_◎)
+overthinking.en = Mrraow(⊙_⊙)..
 
-# 读文件、搜索、查网页
 reading = 咪呀!📖
+reading.en = Mew!📖
 
-# 改文件、写代码
 typing = ฅ(^•ω•^)ฅ✧
 
-# 跑命令、等结果
-bash = (^•ω•^)咪✧
+running = (^•ω•^)咪✧
+running.en = (^•ω•^)Mew✧
 
-# 要你批准、问你问题
 notify =(•̀ω•́ )喵!
+notify.en = (•̀ω•́ )Meow!
 
-# 举手 2 分钟没人理之后
-call =( ˘•ω•˘)喵？
-
-# 干完活了
-done = ✧喵٩(ˊωˋ)
-
-# 出错了
 error = 喵喵喵(⊙_⊙)？
+error.en = Meow meow？
 
-# 被连戳、背对时被戳、举手等急了
-angry = 嘶哈╰(⇀⌂↼ )╯
+poked = 喵 (｀⌣  ´ )ʃ | 咪？ | 干嘛喵(・ω・)
+poked.en = Meow~ (｀⌣  ´ )ʃ | Mew? | What, mew?(・ω・)
 
-# 闲了 3 分钟以后
-look1 = 喵~
+bored = 喵~ | 喵喵喵~ | 咪... ｜･ω･｀) | (｀ε´)
+bored.en = Meow~ | Meow meow~ | Mew... ｜･ω･｀) | (｀ε´)
 
-# 同上
-look2 = 喵喵喵~
-
-# 闲了 5 分钟以后
-look3 = 咪... |･ω･｀)
-
-# 同上，偶尔背对你
-look4 = (｀ε´)
-
-# 闲了 7 分钟
 yawn = 咪咕.. Zzz..
+yawn.en = Mrrp..Zz
 
-# 闲了 10 分钟
-sleep1 = (-ｪ -)｡o
-
-# 再过 15 分钟
-sleep2 = (。-ω-)Zz..
-
-# 再过 15 分钟
-sleep3 = zZZzzz..
-
-# 再过 15 分钟
-sleep4 = zZZzzZZZZzz..
-
-# 睡着时被戳、睡着时来活
 wake = \(´Д`)ﾉ 咪哇!!
+wake.en = \(´Д`)ﾉ Mrrah!!
 
-# 醒着时被戳一下
-poke = 喵 (｀⌣  ´ )ʃ
+grab = 咪？! ( ﾟдﾟ)
+grab.en = Mew?! ( ﾟдﾟ)
 
-# 按住拖着走的时候
-lifted = 咪？! ( ﾟдﾟ)
+done = ✧喵٩(ˊωˋ) | 好啦喵！ | 搞定✧(=^･ω･^=)
+done.en = ✧Mew٩(ˊωˋ) | Done, mew! | Yay✧(=^･ω･^=)
+
+angry = 嘶哈╰(⇀⌂↼ )╯
+angry.en = Hsss╰(⇀⌂↼‶)╯
+
+sleep = (-ｪ -)｡o | (。-ω-)Zz.. | zZZzzz.. | zZZzzZZZZzz..
+
+# 原 call 已不再触发，保留原句供查阅。 / Retired call lines, kept as notes.
+# call =( ˘•ω•˘)喵？
+# call.en = ( ˘•ω•˘ )Meow?

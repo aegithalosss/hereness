@@ -182,19 +182,22 @@ lifted = Picked up
   const widthOf = (ch) => (WIDE.test(ch) ? 2 : 1);
 
   function parse(text) {
-    const out = { name: "", texts: {} };
+    const out = { name: "", texts: {}, en: { name: "", texts: {} }, inline: false };
     for (const raw of String(text || "").split(/\r?\n/)) {
       const line = raw.trim();
       if (!line || line.startsWith("#")) continue;
       const eq = line.indexOf("=");
       if (eq < 0) continue;
-      const key = line.slice(0, eq).trim();
+      let key = line.slice(0, eq).trim();
       const value = line.slice(eq + 1).trim();
+      const isEn = key.endsWith(".en");
+      if (isEn) { key = key.slice(0, -3); out.inline = true; }
+      const target = isEn ? out.en : out;
       if (key === "名字" || key.toLowerCase() === "name") {
-        out.name = value;
+        target.name = value;
         continue;
       }
-      out.texts[key] = value
+      target.texts[key] = value
         ? value
             .split("|")
             .map((s) => s.trim())
@@ -204,10 +207,34 @@ lifted = Picked up
     return out;
   }
 
+  function stateTexts(texts) {
+    const out = { ...texts };
+    const aliases = {
+      onit: ["prompt"], overthinking: ["crosseye"], running: ["bash"],
+      poked: ["poke"], grab: ["lifted"],
+      bored: ["look1", "look2", "look3", "look4"],
+      sleep: ["sleep1", "sleep2", "sleep3", "sleep4"],
+    };
+    for (const [key, states] of Object.entries(aliases)) {
+      if (!Object.prototype.hasOwnProperty.call(texts, key)) continue;
+      for (const state of states) out[state] = texts[key];
+      delete out[key];
+    }
+    return out;
+  }
+
   function byLang(files, en) {
-    const first = parse(files && (en ? files.en : files.zh));
-    if (first.name) return first;
-    return parse(files && (en ? files.zh : files.en));
+    const base = parse(files && files.zh);
+    const legacy = parse(files && files.en);
+    if (!base.inline && String((files && files.en) || "").trim()) {
+      const first = en ? legacy : base;
+      const chosen = first.name ? first : (en ? base : legacy);
+      return { name: chosen.name, texts: stateTexts(chosen.texts) };
+    }
+    const order = en ? [base.en, legacy, base] : [base, base.en, legacy];
+    const texts = {};
+    for (const source of [...order].reverse()) Object.assign(texts, stateTexts(source.texts));
+    return { name: order.find((source) => source.name)?.name || "", texts };
   }
 
   function merge(status, normal) {

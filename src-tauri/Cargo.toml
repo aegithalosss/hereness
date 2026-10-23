@@ -1,6 +1,6 @@
 [package]
 name = "hereness"
-version = "0.1.1"
+version = "0.1.2"
 description = "在呢 | Hereness: a desktop cat that keeps you company while your AI coding agent works"
 authors = ["Aegithalos"]
 edition = "2021"

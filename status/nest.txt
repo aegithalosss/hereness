@@ -1,0 +1,67 @@
+# 一份文件放中英文，状态键与 Settings 图片文件名一致（不带 .png）。
+# 英文用同名 .en 行；没有译文共用另一行。所用行留空或两边都没有，用默认。
+# 用 | 隔开多句；同一显示状态里保留一句，换状态或重读后再挑。
+# One file, two languages. Keys match Settings image names without .png.
+# Add .en for English; a missing translation shares the other line.
+# Keep lines short: about 6 Chinese or 12 English characters.
+
+名字 = 小窝电台
+name.en = Nest Radio
+
+idle = 我在小窝 | 耳朵在线 | 陪你发芽
+idle.en = Nest mode | Ears online | Here I loaf
+
+onit = 收到小纸条 | 耳朵竖好 | 这就出窝
+onit.en = Note caught | Ears up | On my paws
+
+thinking = 脑内小脚步 | 想法冒芽 | 给灵感挠痒
+thinking.en = Tiny steps | Idea paws | Sprout time
+
+overthinking = 想法打结啦 | 脑袋绕毛线 | 灵感转圈圈
+overthinking.en = Brain knot | Yarn brain | Idea loops
+
+reading = 翻知识口袋 | 闻闻新线索 | 书页沙沙响
+reading.en = Clue hunt | Page rustle | Sniff clues
+
+typing = 让想法长脚 | 字在发芽 | 爪爪忙碌中
+typing.en = Ideas afoot | Word sprouts | Busy paws
+
+running = 小齿轮转呀 | 等水壶咕嘟 | 听回音呢
+running.en = Gears go brr | Kettle watch | Echo watch
+
+notify = 给你留个座 | 有张小纸条 | 等你搭把爪
+notify.en = Saved a seat | A tiny note | Lend a paw?
+
+error = 哎呀绊了爪 | 毛线缠住啦 | 这里有个结
+error.en = Paw stumble | Yarn tangle | Found a knot
+
+poked = 收到一枚戳 | 爪心痒痒 | 你戳到我啦
+poked.en = Boop noted | Tickly paws | Oh, a boop!
+
+bored = 看风路过 | 耳朵散个步 | 云往哪儿跑 | 偷看你一眼 | 那边有点啥 | 扭头收电波 | 侧着晒想法 | 灵魂晾一晾 | 发会小小呆 | 背面也在陪 | 尾巴值班中 | 留个背影给你
+bored.en = Wind watch | Ears wander | Cloud patrol | Sneak a peek | What's that? | Tune my ears | Air my ideas | Soul airing | Daydream | Still here | Tail on duty | Back to you
+
+yawn = 哈欠开花 | 眼皮变棉被 | 困意来敲门
+yawn.en = Yawn bloom | Heavy lids | Sleep knocks
+
+wake = 梦掉地上啦 | 耳朵先醒了 | 咦，到我啦
+wake.en = Dream down! | Ears awake | My turn?
+
+grab = 小窝起飞 | 四爪悬空啦 | 云端乘客
+grab.en = Nest in air | Paws aloft | Cloud rider
+
+done = 星星归你 | 叮，长好啦 | 小爪击个掌
+done.en = Your star! | All grown! | High paw!
+
+angry = 小脸鼓起来 | 尾巴打个结 | 哼唧一小下
+angry.en = Puffy cheeks | Tail knot | Tiny huff
+
+sleep = 小窝熄灯 | 呼噜发芽 | 轻轻睡着啦 | 梦里套个梦 | 云朵当枕头 | 睡进棉花里 | 呼叫不到啦 | 沉到梦底啦 | 梦把我抱走 | 肚皮晒月亮 | 四爪放假啦 | 摊成一朵云
+sleep.en = Lights out | Purr sprouts | Soft snooze | Dream loop | Cloud pillow | Cotton sleep | Out of range | Dream depths | Dream hug | Moon belly | Paws at rest | Cloud puddle
+
+need_you = 找你呀 | 有话说 | 等你看看
+need_you.en = needs you | is calling | has a note
+
+# 原 call 已不再触发，保留原句供查阅。 / Retired call lines, kept as notes.
+# call = 小窝呼叫你 | 纸条还在哦 | 耳朵朝着你
+# call.en = Nest calling | Note awaits | Ears on you

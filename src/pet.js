@@ -742,9 +742,7 @@ function refresh(immediate = false) {
     show("state:" + a, stateOf(a), cycle);
   }
 
-  labelTextEl.textContent = connected === 0 ? connectHint()
-    : labelText(shown, (stateOf("idle") || {}).name);
-  labelEl.hidden = status.off;
+  updateStatusLabel();
 
   updateRigEyes(now < closedEyesUntil || rigBlinking);
   if (rigEl.hidden) rigEl.classList.remove("m-rig-poke");
@@ -1307,13 +1305,25 @@ function applyPrefs(view) {
 }
 
 let status = { id: Statuses.BUILTIN_ID, texts: {}, off: false };
+let labelChoice = null;
 
 const STATUS_URL = `http://127.0.0.1:${PET_PORT}/status/`;
 
 const statusKey = (id) => String(id).replace(/^(state|reaction):/, "");
 
 function labelText(id, fallback) {
-  return Statuses.pick(status.texts[statusKey(id)]) || fallback;
+  if (!labelChoice || labelChoice.id !== id) {
+    labelChoice = { id, text: Statuses.pick(status.texts[statusKey(id)]) };
+  }
+  return labelChoice.text || fallback;
+}
+
+function updateStatusLabel() {
+  const [kind, key] = String(shown).split(":");
+  const conf = kind === "reaction" ? REACTIONS[key] : stateOf(key);
+  const text = labelText(shown, (conf || stateOf("idle") || {}).name);
+  labelTextEl.textContent = connected === 0 ? connectHint() : text;
+  labelEl.hidden = status.off;
 }
 
 async function loadStatuses() {
@@ -1333,12 +1343,8 @@ async function loadStatuses() {
   }
   status.texts = texts;
   status.off = status.id === "off";
-  labelEl.hidden = status.off;
-  if (shown) {
-    const [kind, key] = shown.split(":");
-    const conf = kind === "state" ? stateOf(key) : REACTIONS[key];
-    if (conf) labelTextEl.textContent = labelText(shown, conf.name);
-  }
+  labelChoice = null;
+  updateStatusLabel();
   if (tauri) tauri.core.invoke("set_statuses", { items: Statuses.catalog(list, en) }).catch(() => {});
   refresh();
 }
