@@ -10,6 +10,18 @@ const STATUS_LIST = path.join(__dirname, "release-status.txt");
 
 const release = process.argv.includes("--release");
 
+for (const name of ["LICENSE", "THIRD_PARTY_ASSETS.md"]) {
+  const file = path.join(ROOT, name);
+  if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
+    console.error(`[mac 自带] 停下来了：缺少许可文件 ${name}（必须是文件）`);
+    process.exit(1);
+  }
+}
+if (process.argv.includes("--check")) {
+  console.log("[mac 自带] 两份许可文件检查通过；未暂存资源、未写入或覆盖文件。");
+  process.exit(0);
+}
+
 function missing(msg) {
   if (release) {
     console.error(`\n[mac 自带] 停下来了：${msg}`);

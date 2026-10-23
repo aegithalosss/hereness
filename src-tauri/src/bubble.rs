@@ -1,7 +1,5 @@
 use std::collections::BTreeMap;
 
-use std::fs;
-
 use std::path::PathBuf;
 
 use tauri::{AppHandle, Manager};
@@ -20,18 +18,7 @@ pub fn privacy(app: &AppHandle) -> bool {
 
 pub fn set_privacy(app: &AppHandle, on: bool) -> Result<(), String> {
     let path = config_path(app, PRIVACY_FILE).ok_or("找不到程序设置文件夹")?;
-    if on {
-        if let Some(dir) = path.parent() {
-            fs::create_dir_all(dir).map_err(|e| format!("建不了文件夹：{e}"))?;
-        }
-        fs::write(&path, "").map_err(|e| format!("记不住开关：{e}"))
-    } else {
-        match fs::remove_file(&path) {
-            Ok(()) => Ok(()),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-            Err(e) => Err(format!("记不住开关：{e}")),
-        }
-    }
+    crate::settings_write::flag(&path, on)
 }
 
 pub fn folder_names(app: &AppHandle) -> BTreeMap<String, String> {
@@ -44,10 +31,13 @@ pub fn bubble_privacy(app: AppHandle) -> bool {
 }
 
 #[tauri::command]
-pub fn bubble_set_privacy(app: AppHandle, on: bool) -> bool {
-    let _ = set_privacy(&app, on);
-    let _ = tauri::Emitter::emit(&app, "bubble-privacy-changed", on);
-    on
+pub fn bubble_set_privacy(app: AppHandle, on: bool) -> Result<bool, String> {
+    crate::settings_write::commit(
+        || set_privacy(&app, on).map(|_| on),
+        |on| {
+            let _ = tauri::Emitter::emit(&app, "bubble-privacy-changed", on);
+        },
+    )
 }
 
 #[tauri::command]

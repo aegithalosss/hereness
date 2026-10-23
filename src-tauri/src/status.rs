@@ -141,9 +141,12 @@ pub fn set_current(app: &AppHandle, id: &str) -> Result<(), String> {
 }
 
 pub fn choose(app: &AppHandle, id: &str) -> Result<(), String> {
-    let saved = set_current(app, id);
-    let _ = app.emit("status-changed", id);
-    saved
+    crate::settings_write::commit(
+        || set_current(app, id),
+        |_| {
+            let _ = app.emit("status-changed", id);
+        },
+    )
 }
 
 #[tauri::command]

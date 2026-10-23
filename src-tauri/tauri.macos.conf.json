@@ -10,7 +10,9 @@
   "bundle": {
     "resources": {
       "target/mac-resources/skins/": "skins/",
-      "target/mac-resources/status/": "status/"
+      "target/mac-resources/status/": "status/",
+      "../LICENSE": "LICENSE",
+      "../THIRD_PARTY_ASSETS.md": "THIRD_PARTY_ASSETS.md"
     }
   }
 }

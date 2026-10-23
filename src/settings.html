@@ -65,6 +65,7 @@
             <input type="checkbox" id="autostart" />
             <span data-t="autostart">开机自动启动</span>
           </label>
+          <div id="autostart-dev" class="small-note" data-t="autostart-dev" hidden></div>
 
           <label class="row check">
             <input type="checkbox" id="taskbar" />
@@ -162,12 +163,12 @@
           <div id="folders"></div>
 
           <div class="section-title" data-t="storage">桌宠在电脑上存的东西</div>
-          <p class="muted" data-t="storage-hint">桌宠的设置（语言、大小、皮肤选择、开关）和网页缓存存在下面两个文件夹里。不想用桌宠了，可以先退出桌宠，再自己删掉这两个文件夹。</p>
+          <p class="muted" data-t="storage-hint"></p>
           <div class="row store-row">
             <button type="button" id="store-settings" class="btn" data-t="store-settings-open">打开设置文件夹</button>
             <span class="muted" id="store-settings-missing" data-t="store-missing" hidden>还没有</span>
           </div>
-          <div class="row store-row">
+          <div class="row store-row" id="store-cache-row">
             <button type="button" id="store-cache" class="btn" data-t="store-cache-open">打开缓存文件夹</button>
             <span class="muted" id="store-cache-missing" data-t="store-missing" hidden>还没有</span>
           </div>
@@ -180,7 +181,29 @@
       </section>
 
       <section id="page-about" class="page" hidden>
-        <div class="col">
+        <div class="col about-intro">
+
+          <img class="about-icon" src="app-icon.png" alt="" />
+          <div class="about-name">在呢 | Hereness</div>
+          <p class="about-version"><span data-t="about-version">当前版本：</span><span id="version"></span></p>
+          <p class="muted" data-t="about-tagline"></p>
+          <ul class="about-features muted">
+            <li data-t="about-f1"></li>
+            <li data-t="about-f2"></li>
+            <li data-t="about-f3"></li>
+            <li data-t="about-f4"></li>
+          </ul>
+        </div>
+        <div class="col right about-scroll">
+          <div class="reading-text about-credits">
+          <h3 data-t="credits-title">制作人员</h3>
+          <p><span data-t="author">作者</span>：<a class="link" data-external-url href="https://github.com/aegithalosss/hereness">Aegithalos</a></p>
+          <p><span data-t="co-creation"></span>：<a class="link" data-external-url href="https://github.com/aegithalosss/hereness"><span data-t="co-creation-body"></span></a></p>
+          <p><span data-t="dev"></span>：<span data-t="dev-body"></span></p>
+          <p><span data-t="support"></span>：Alex<span data-t="list-sep"></span><a class="link" data-external-url href="https://github.com/jovesun-lab">jovesun-lab</a></p>
+          <p><span data-t="cheer"></span>：<span data-t="cheer-body"></span></p>
+          <p><span data-t="ideas"></span>：Denise</p>
+          </div>
           <div class="reading-text" data-language="zh">
             <h3>使用与许可</h3>
             <p>本项目源码公开，欢迎免费使用、二创和分享。</p>
@@ -192,6 +215,7 @@
             <li><strong>分享修改后的皮肤或动画时：</strong> 请保留原作者署名及已有的 AI 制作说明，并追加 Modified by: 你的名字或笔名。</li>
             </ul>
             <p>请勿冒充原作者或官方版本。内置广告、收费增值服务等限制，以及私人约稿的具体规则，见仓库中的 <a class="link" data-external-url href="https://github.com/aegithalosss/hereness/blob/main/LICENSE"><code>LICENSE</code></a>；本说明是简要介绍，以完整许可为准。</p>
+            <p><a class="link" href="#" data-bundled-license>查看随包许可</a></p>
             <p>授权联系：<a class="link" data-external-url href="https://github.com/aegithalosss">Aegithalos</a>。</p>
             </div>
 <div class="reading-text" data-language="en" hidden>
@@ -205,20 +229,13 @@
             <li><strong>When sharing modified skins or animations:</strong> preserve the original creator credits and any existing AI-generation disclosures, and add Modified by: your name or pseudonym.</li>
             </ul>
             <p>Do not claim to be the original author or present modified releases as official. Restrictions on embedded advertising and paid add-on services, along with the specific rules for private commissions, are detailed in <a class="link" data-external-url href="https://github.com/aegithalosss/hereness/blob/main/LICENSE"><code>LICENSE</code></a>. This summary is for convenience; the full license governs.</p>
+            <p><a class="link" href="#" data-bundled-license>View the bundled license</a></p>
             <p>For permission, contact <a class="link" data-external-url href="https://github.com/aegithalosss">Aegithalos</a>.</p>
             </div>
-        </div>
-        <div class="col right">
-          <p><span data-t="author">作者</span>：<a class="link" data-external-url href="https://github.com/aegithalosss/hereness">Aegithalos</a></p>
-          <p><span data-t="co-creation"></span>：<a class="link" data-external-url href="https://github.com/aegithalosss/hereness"><span data-t="co-creation-body"></span></a></p>
-          <p><span data-t="dev"></span>：<span data-t="dev-body"></span></p>
-          <p><span data-t="support"></span>：Alex<span data-t="list-sep"></span><a class="link" data-external-url href="https://github.com/jovesun-lab">jovesun-lab</a></p>
-          <p><span data-t="cheer"></span>：<span data-t="cheer-body"></span></p>
-          <p><span data-t="ideas"></span>：Denise</p>
           <p class="muted" data-t="holiday-credit"></p>
           <p class="muted" data-t="pixabay-credit"></p>
-          <p class="muted" data-t="deepseek-note">DeepSeek 图标仅用于指示 API 状态，本项目与 DeepSeek 官方无关。</p>
-          <p class="muted"><span data-t="version">版本</span> <span id="version"></span></p>
+
+          <p class="muted"><span data-t="find-me"></span> <a class="link" data-external-url href="https://xhslink.cn/m/4iUT48hvJkP"><span data-t="xhs"></span></a> · <a class="link" data-external-url href="https://x.com/Aegithalossss">X @Aegithalossss</a></p>
         </div>
       </section>
     </main>

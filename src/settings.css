@@ -191,7 +191,7 @@ main.style-scroll {
 }
 .advanced-content > p { max-width: 660px; }
 .folder-row > label { flex: 0 0 148px; overflow-wrap: anywhere; }
-[data-t="folders-hint"] { white-space: pre-line; }
+[data-t="folders-hint"], [data-t="storage-hint"] { white-space: pre-line; }
 #folders { max-width: 660px; margin: 12px 0 20px; padding: 14px; background: var(--bg); }
 #folders .folder-row:last-child { margin-bottom: 0; }
 .folders-empty { margin: 20px 14px; text-align: center; }
@@ -217,6 +217,7 @@ main.style-scroll {
   gap: 12px;
   margin-bottom: 12px;
 }
+.store-row[hidden] { display: none; }
 .row > span:first-child {
   flex: 0 0 88px;
 }
@@ -318,6 +319,10 @@ input[type="text"] {
   font-size: 12px;
 }
 
+#autostart-dev:not([hidden]) {
+  margin: -8px 0 12px;
+}
+
 .agent {
   display: flex;
   align-items: center;
@@ -394,6 +399,19 @@ input[type="text"] {
 .reading-text li { margin: 0 0 6px; }
 .reading-text p { margin: 6px 0 12px; }
 .reading-text .link { font-size: inherit; }
+
+#page-about { height: 100%; min-height: 0; align-items: stretch; }
+#page-about > .about-intro { flex: 0 1 249px; min-width: 180px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+#page-about > .about-scroll { min-width: 200px; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.about-icon { display: block; width: 96px; height: 96px; border-radius: 20px; margin: 4px 0 14px; }
+.about-name { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.about-version { margin: 0 0 14px; }
+.about-intro > p.muted { margin: 0 0 12px; }
+.about-features { margin: 0; padding-left: 18px; }
+.about-features li { margin: 0 0 4px; }
+.about-scroll > .reading-text:first-child h3 { margin-top: 0; }
+.about-credits p { margin: 0 0 4px; }
+.about-scroll > p.muted { margin: 6px 0; font-size: 12px; }
 
 #detail-panel {
   margin-top: 14px;

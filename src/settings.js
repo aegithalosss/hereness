@@ -21,6 +21,11 @@ const T = {
     ds: "DeepSeek 低价提示",
     remember: "记住上次位置",
     autostart: "开机自动启动",
+    "autostart-dev": "开发版不能开机自启，正式版才可以。",
+    "save-failed": "设置没存上，已恢复原值。",
+    "refresh-failed": "设置已保存，但无法刷新显示。",
+    "autostart-query-failed": "无法查询开机自启，状态未知。",
+    "autostart-save-failed": "开机自启没改成功，已重新查询系统状态。",
     taskbar: "在任务栏隐藏",
     agents: "监控 Agent",
     more: "敬请期待更多",
@@ -39,9 +44,19 @@ const T = {
     "folders-legacy": "旧昵称，尚未绑定完整路径",
 
     storage: "桌宠在电脑上存的东西",
-    "storage-hint": "桌宠的设置（语言、大小、皮肤选择、开关）和网页缓存存在下面两个文件夹里。不想用桌宠了，可以先退出桌宠，再自己删掉这两个文件夹。",
+    "storage-hint": "桌宠的设置和网页缓存存在下面两个文件夹里。\n彻底卸载：\n1. 把所有 agent 都断开，关掉开机自动启动；\n2. 自己做的皮肤（skins）和状态提示（status）还要的话，记得先保存；\n3. 打开下面两个文件夹；\n4. 退出桌宠，删掉这两个文件夹；\n5. 最后删掉桌宠程序本身：Windows 删掉解压出来的整个文件夹，Mac 把 Hereness 拖到废纸篓；\n6. 你的用户文件夹（C:\\Users\\你的名字\\）里，.claude、.codex、.cursor、.qwen、.dsh 这几个文件夹中，名字以 .hereness.bak 结尾的文件是桌宠改设置前留的备份，一起删掉。",
     "store-settings-open": "打开设置文件夹",
     "store-cache-open": "打开缓存文件夹",
+    "store-both-open": "打开设置和缓存文件夹",
+    "storage-hint-mac": "桌宠的设置和网页缓存都存在下面这个文件夹里。\n彻底卸载：\n1. 把所有 agent 都断开，关掉开机自动启动；\n2. 自己做的皮肤（skins）和状态提示（status）还要的话，记得先保存；\n3. 打开下面这个文件夹；\n4. 退出桌宠，删掉这个文件夹；\n5. 最后把 Hereness 拖到废纸篓；\n6. 你的个人文件夹（~/）里，.claude、.codex、.cursor、.qwen、.dsh 这几个隐藏文件夹中（在访达里按 Cmd+Shift+. 显示），名字以 .hereness.bak 结尾的文件是桌宠改设置前留的备份，一起删掉。",
+    "license-open-failed": "无法打开随包许可。请确认安装包完整，或重新下载桌宠。",
+    "system-apply-failed": "部分设置未生效。",
+    "apply-size-failed": "大小未能应用。可以退出桌宠再打开试一次。",
+    "apply-pin-failed": "置顶未能应用。可以退出桌宠再打开试一次。",
+    "apply-hide_from_taskbar-failed": "任务栏设置未能应用。可以退出桌宠再打开试一次。",
+    "apply-prefs-failed": "系统状态已读回，但未能保存恢复后的设置。可以退出桌宠再打开试一次。",
+    "system-unknown": "状态未知，已停用该项。",
+    "unknown": "未知",
     "store-missing": "还没有",
     signals: "最近收到的信号",
     "signals-hint": "桌宠这次打开以来，从 agent 收到的最近 60 条信号，新的在上面。只在内存里，退出就没了；不记命令和路径。小猫提醒得不对时，展开看看最后收到的是什么。",
@@ -80,7 +95,7 @@ const T = {
     "guide-3-title": "做自己的皮肤",
     "guide-3-0": "可以直接改现有皮肤里的图，也可以复制一整个皮肤文件夹再改，小猫会自动认出新皮肤。画图时四周建议留出 20% 空白，不然动起来容易被切掉（详见《皮肤制作指南》）。",
     "guide-3-1": "皮肤的名字在 skin.json 的 name 里改。",
-    "guide-3-2": "记得把 credits（创作者）改成你自己。",
+    "guide-3-2": "改完记得更新 credits（创作者）。改的是别人的作品，可以写上原作者，再加一行 Modified by 你的名字。",
     "author": "作者",
     "co-creation": "共同创作",
     "co-creation-body": "小汀（Claude Agent）",
@@ -91,10 +106,17 @@ const T = {
     support: "技术支持",
     "list-sep": "、",
     cheer: "情绪价值提供",
-    "cheer-body": "小苗 🌱（ChatGPT Instant）",
+    "cheer-body": "小苗 🌱 和 ChatGPT Instant",
     ideas: "想法贡献者",
-    "deepseek-note": "DeepSeek 图标仅用于指示 API 状态，本项目与 DeepSeek 官方无关。",
-    version: "版本",
+    "find-me": "如果喜欢我的作品，欢迎到小红书或者 X 来找我玩：",
+    "xhs": "小红书",
+    "about-version": "当前版本：",
+    "about-tagline": "一只住在桌面上的小猫，跟着你的 AI agent 一起干活。",
+    "about-f1": "跟着 agent 换动作",
+    "about-f2": "要你批准时举手",
+    "about-f3": "卡住时提醒",
+    "about-f4": "换皮肤",
+    "credits-title": "制作人员",
     ok: "确认",
     "agent-missing": "（没找到）",
     "agent-claude-q":
@@ -167,6 +189,11 @@ const T = {
     ds: "DeepSeek off-peak badge",
     remember: "Remember last position",
     autostart: "Launch at login",
+    "autostart-dev": "Launch at login is only available in the release build.",
+    "save-failed": "Settings could not be saved. The previous value has been restored.",
+    "refresh-failed": "Settings were saved, but the display could not be refreshed.",
+    "autostart-query-failed": "Could not check launch at login. Its status is unknown.",
+    "autostart-save-failed": "Launch at login could not be changed. The system status has been checked again.",
     taskbar: "Hide from taskbar",
     agents: "Monitored agents",
     more: "More coming",
@@ -185,9 +212,19 @@ const T = {
     "folders-legacy": "Old nickname, not yet linked to a full path",
 
     storage: "What the pet keeps on your computer",
-    "storage-hint": "The pet's settings (language, size, skin choice, switches) and its web cache live in the two folders below. If you don't want to use the pet anymore, quit it first and then delete the two folders yourself.",
+    "storage-hint": "The pet's settings and web cache live in the two folders below.\nTo uninstall completely:\n1. Disconnect every agent and turn off launch at startup;\n2. Save any skins or status prompts you made, if you still want them;\n3. Open the two folders below;\n4. Quit the pet and delete the two folders;\n5. Finally, delete the pet itself: on Windows, delete the whole unzipped folder; on Mac, drag Hereness to the Trash;\n6. In your user folder (C:\\Users\\your name\\), inside the .claude, .codex, .cursor, .qwen and .dsh folders, delete the files ending in .hereness.bak. They are backups the pet saved before changing settings.",
     "store-settings-open": "Open settings folder",
     "store-cache-open": "Open cache folder",
+    "store-both-open": "Open settings and cache folder",
+    "storage-hint-mac": "The pet's settings and web cache both live in the folder below.\nTo uninstall completely:\n1. Disconnect every agent and turn off launch at startup;\n2. Save any skins or status prompts you made, if you still want them;\n3. Open the folder below;\n4. Quit the pet and delete this folder;\n5. Finally, drag Hereness to the Trash;\n6. In your home folder (~/), inside the hidden .claude, .codex, .cursor, .qwen and .dsh folders (press Cmd+Shift+. in Finder to show them), delete the files ending in .hereness.bak. They are backups the pet saved before changing settings.",
+    "license-open-failed": "Could not open the bundled license. Check that the installation is complete, or download the pet again.",
+    "system-apply-failed": "Some settings did not take effect.",
+    "apply-size-failed": "Size could not be applied. Quit the pet and open it again to retry.",
+    "apply-pin-failed": "Always on top could not be applied. Quit the pet and open it again to retry.",
+    "apply-hide_from_taskbar-failed": "The taskbar setting could not be applied. Quit the pet and open it again to retry.",
+    "apply-prefs-failed": "The system state was checked, but the restored settings could not be saved. Quit the pet and open it again to retry.",
+    "system-unknown": "Status is unknown. This setting is disabled.",
+    "unknown": "Unknown",
     "store-missing": "Not there yet",
     signals: "Recent signals",
     "signals-hint": "The last 60 signals the pet got from agents since it started, newest on top. Kept in memory only and gone when you quit; no commands or paths. If the cat's reminder looks wrong, open this and check what came in last.",
@@ -226,7 +263,7 @@ const T = {
     "guide-3-title": "Make your own skin",
     "guide-3-0": "You can edit pictures in an existing skin or copy a whole skin folder and edit the copy. The cat will recognize the new skin automatically. Leave about 20% empty space around the cat, or it may get cut off when it moves (see the Skin Guide).",
     "guide-3-1": "Change the skin’s name in the name field in skin.json.",
-    "guide-3-2": "Remember to change credits to your own name.",
+    "guide-3-2": "Remember to update credits when you're done. If you changed someone else's work, you can keep the original author and add a line: Modified by your name.",
     "author": "Author",
     "co-creation": "Co-creation",
     "co-creation-body": "Ting (Claude Agent)",
@@ -237,10 +274,17 @@ const T = {
     support: "Technical support",
     "list-sep": ", ",
     cheer: "Emotional support",
-    "cheer-body": "小苗 🌱 (ChatGPT Instant)",
+    "cheer-body": "小苗 🌱 and ChatGPT Instant",
     ideas: "Idea contributor",
-    "deepseek-note": "The DeepSeek icon is used only to indicate API status; this project is not affiliated with DeepSeek.",
-    version: "Version",
+    "find-me": "If you like my work, come say hi on Xiaohongshu or X:",
+    "xhs": "Xiaohongshu",
+    "about-version": "Version: ",
+    "about-tagline": "A little cat that lives on your desktop and works alongside your AI agent.",
+    "about-f1": "Follows what your agent is doing",
+    "about-f2": "Raises a paw when it needs your approval",
+    "about-f3": "Reminds you when it seems stuck",
+    "about-f4": "Swappable skins",
+    "credits-title": "Credits",
     ok: "OK",
     "agent-missing": "(not found)",
     "agent-claude-q":
@@ -537,8 +581,123 @@ function paintRange(input) {
   input.style.setProperty("--fill", `${Math.max(0, Math.min(100, pct))}%`);
 }
 
-async function savePrefs() {
-  await inv("prefs_set", { prefs });
+let savedPrefs = null;
+let requestedPrefs = null;
+let prefsWrite = Promise.resolve();
+let prefsRevision = 0;
+function settingError(key, error) {
+  let message = $("settings-save-error");
+  if (!message) {
+    message = el("span", { id: "settings-save-error", className: "small-note", role: "status" });
+    document.querySelector("footer").prepend(message);
+  }
+  message.textContent = `${t(key)}${error ? ` ${String(error)}` : ""}`;
+}
+
+function savePrefs() {
+  const desired = { ...prefs };
+  const base = requestedPrefs || savedPrefs || desired;
+  const patch = Object.fromEntries(Object.entries(desired).filter(([key, value]) => value !== base[key]));
+  requestedPrefs = desired;
+  const revision = ++prefsRevision;
+  const job = prefsWrite.then(async () => {
+    const next = { ...savedPrefs, ...patch };
+    let error;
+    let failures = [];
+    try {
+      const result = await inv("prefs_set", { prefs: next });
+      savedPrefs = result?.prefs || next;
+      failures = result?.failures || [];
+      data.system_unknown = failures.filter((issue) => issue.unknown).map((issue) => issue.field);
+    }
+    catch (e) { error = e; }
+    if (revision === prefsRevision) {
+      prefs = { ...savedPrefs };
+      requestedPrefs = null;
+      lang = prefs.language === "en" ? "en" : "zh";
+      try {
+        applyText(); fillGlobal(); await fillStyle();
+        if (detailLoaded) renderDetail();
+      } catch (refreshError) { if (error === undefined) settingError("refresh-failed", refreshError); }
+    }
+    if (error !== undefined) settingError("save-failed", error);
+    else if (failures.length) showSystemFailures(failures);
+    return error === undefined && failures.length === 0;
+  });
+  prefsWrite = job.catch((error) => { settingError("save-failed", error); });
+  return prefsWrite;
+}
+
+function showSystemFailures(failures) {
+  const text = failures.map((issue) => `${t(`apply-${issue.field}-failed`)} ${issue.unknown ? t("system-unknown") : ""} ${issue.error || ""}`).join("\n");
+  settingError("system-apply-failed", text);
+}
+
+function showSystemStatus() {
+  const unknown = data.system_unknown || [];
+  for (const [id, field] of [["size", "size"], ["pin", "pin"], ["taskbar", "hide_from_taskbar"]]) {
+    const node = $(id);
+    const missing = unknown.includes(field);
+    node.disabled = missing;
+    if (id === "taskbar") { node.indeterminate = missing; continue; }
+    let option = node.querySelector('option[data-system-unknown]');
+    if (missing) {
+      if (!option) {
+        option = el("option", { value: "__unknown", disabled: true });
+        option.setAttribute("data-system-unknown", "");
+        node.append(option);
+      }
+      option.textContent = t("unknown");
+      node.value = "__unknown";
+    } else { option?.remove(); }
+  }
+}
+
+function showAutostart() {
+  const input = $("autostart");
+  const known = typeof data.autostart === "boolean";
+  input.indeterminate = !known;
+  input.disabled = !known || (data.is_dev === true && data.autostart !== true);
+  const hint = $("autostart-dev");
+  hint.hidden = data.is_dev !== true;
+  hint.textContent = t("autostart-dev");
+  if (known) input.checked = data.autostart;
+}
+async function refreshAutostart() {
+  try { data.autostart = await inv("autostart_get"); }
+  catch (error) { data.autostart = null; settingError("autostart-query-failed", error); }
+  showAutostart();
+}
+async function saveAutostart(input) {
+  const on = input.checked;
+  if (typeof data.autostart === "boolean") input.checked = data.autostart;
+  input.disabled = true;
+  try {
+    await prefsWrite;
+    data.autostart = await inv("autostart_set", { on });
+    prefs.autostart = data.autostart;
+    savedPrefs.autostart = data.autostart;
+  } catch (error) {
+    await refreshAutostart();
+    settingError("autostart-save-failed", data.autostart === null ? `${error} ${t("autostart-query-failed")}` : error);
+  }
+  showAutostart();
+}
+async function saveFlag(input, command, key) {
+  const old = !!data[key];
+  const on = input.checked;
+  input.checked = old;
+  input.disabled = true;
+  try { data[key] = await inv(command, { on }); }
+  catch (error) { settingError("save-failed", error); }
+  finally { input.checked = !!data[key]; input.disabled = false; }
+}
+async function saveDetail(command, args, restore = () => {}) {
+  try { await inv(command, args); }
+  catch (error) { restore(); settingError("save-failed", error); return false; }
+  try { await loadDetail({ quiet: true }); }
+  catch (error) { settingError("refresh-failed", error); }
+  return true;
 }
 
 function applyText() {
@@ -560,8 +719,9 @@ function fillGlobal() {
   $("pin").value = prefs.pin;
   $("ds").checked = !!data.ds_price;
   $("remember").checked = !!prefs.remember_position;
-  $("autostart").checked = !!prefs.autostart;
+  showAutostart();
   $("taskbar").checked = !!prefs.hide_from_taskbar;
+  showSystemStatus();
   $("privacy").checked = !!data.privacy;
   $("stuck-reminder").checked = prefs.stuck_reminder !== false;
   $("stuck-minutes").value = prefs.stuck_minutes || 10;
@@ -643,6 +803,9 @@ function fillFolders() {
 }
 
 function fillStorage() {
+  $("store-cache-row").hidden = IS_MAC;
+  $("store-settings").textContent = t(IS_MAC ? "store-both-open" : "store-settings-open");
+  document.querySelector('[data-t="storage-hint"]').textContent = t(IS_MAC ? "storage-hint-mac" : "storage-hint");
   const mark = (id, exists) => {
     const node = $(id);
     if (node) node.hidden = !!exists;
@@ -715,7 +878,7 @@ async function fillSkinSelect() {
       preview = null;
       renderPreview();
       prefs.skin = skin.value;
-      await savePrefs();
+      if (!await savePrefs()) return;
       if (detailLoaded) await loadDetail();
     });
   }
@@ -735,7 +898,12 @@ async function fillStyle() {
   if (status.value !== data.status) status.value = officialId;
   if (!status.dataset.wired) {
     status.dataset.wired = "1";
-    status.addEventListener("change", () => inv("status_set", { id: status.value }));
+    status.addEventListener("change", async () => {
+      const id = status.value;
+      status.value = data.status;
+      try { await inv("status_set", { id }); data.status = id; status.value = id; }
+      catch (error) { settingError("save-failed", error); }
+    });
   }
 }
 
@@ -762,7 +930,7 @@ async function refreshSkinResources() {
 }
 
 function fillAbout() {
-  $("version").textContent = data.version;
+  $("version").textContent = data.version ? `v${data.version}` : "";
 }
 
 function showTab(name) {
@@ -771,6 +939,13 @@ function showTab(name) {
 }
 
 function wire() {
+  for (const link of document.querySelectorAll("[data-bundled-license]")) {
+    link.addEventListener("click", async (event) => {
+      event.preventDefault();
+      try { await inv("open_bundled_license"); }
+      catch (error) { settingError("license-open-failed", error); }
+    });
+  }
   document.querySelectorAll("a[data-external-url]").forEach((link) => {
     link.addEventListener("click", (event) => {
       event.preventDefault();
@@ -779,6 +954,7 @@ function wire() {
   });
   wireHelp();
   window.addEventListener("focus", refreshSkinResources);
+  window.addEventListener("focus", refreshAutostart);
   $("folders-scan").addEventListener("click", async () => {
     await folderWrite;
     $("folders-error").hidden = true;
@@ -799,12 +975,22 @@ function wire() {
     btn.addEventListener("click", () => {
       for (const b of document.querySelectorAll("#tabs button")) b.classList.toggle("active", b === btn);
       for (const page of document.querySelectorAll(".page")) page.hidden = page.id !== `page-${btn.dataset.tab}`;
-      document.querySelector("main").classList.toggle("style-scroll", btn.dataset.tab === "style");
+      document.querySelector("main").classList.toggle("style-scroll", btn.dataset.tab === "style" || btn.dataset.tab === "about");
     });
   }
   if (window.__TAURI__) {
+    window.__TAURI__.event.listen("system-apply-failed", (e) => {
+      const changed = e.payload.map((issue) => issue.field);
+      data.system_unknown = [...new Set([...(data.system_unknown || []).filter((field) => !changed.includes(field)), ...e.payload.filter((issue) => issue.unknown).map((issue) => issue.field)])];
+      showSystemStatus();
+      showSystemFailures(e.payload);
+    });
     window.__TAURI__.event.listen("prefs-changed", (e) => {
-      if (prefs && e.payload?.prefs) prefs.muted = e.payload.prefs.muted === true;
+      if (prefs && e.payload?.prefs) {
+        prefs.muted = e.payload.prefs.muted === true;
+        if (savedPrefs) savedPrefs.muted = prefs.muted;
+        if (requestedPrefs) requestedPrefs.muted = prefs.muted;
+      }
     });
     window.__TAURI__.event.listen("settings-tab", (e) => showTab(e.payload));
     window.__TAURI__.event.listen("folder-scan-result", (e) => {
@@ -827,7 +1013,7 @@ function wire() {
   $("language").addEventListener("change", async (e) => {
     prefs.language = e.target.value;
     lang = prefs.language === "en" ? "en" : "zh";
-    await savePrefs();
+    if (!await savePrefs()) return;
     applyText();
     fillGlobal();
     fillStyle();
@@ -837,10 +1023,10 @@ function wire() {
   $("size").addEventListener("change", (e) => ((prefs.size = e.target.value), savePrefs()));
   $("pin").addEventListener("change", (e) => ((prefs.pin = e.target.value), savePrefs()));
   $("remember").addEventListener("change", (e) => ((prefs.remember_position = e.target.checked), savePrefs()));
-  $("autostart").addEventListener("change", (e) => ((prefs.autostart = e.target.checked), savePrefs()));
+  $("autostart").addEventListener("change", (e) => saveAutostart(e.target));
   $("taskbar").addEventListener("change", (e) => ((prefs.hide_from_taskbar = e.target.checked), savePrefs()));
-  $("ds").addEventListener("change", (e) => inv("ds_price_set", { on: e.target.checked }));
-  $("privacy").addEventListener("change", (e) => inv("bubble_set_privacy", { on: e.target.checked }));
+  $("ds").addEventListener("change", (e) => saveFlag(e.target, "ds_price_set", "ds_price"));
+  $("privacy").addEventListener("change", (e) => saveFlag(e.target, "bubble_set_privacy", "privacy"));
   $("stuck-reminder").addEventListener("change", (e) => {
     prefs.stuck_reminder = e.target.checked;
     $("stuck-minutes").disabled = !e.target.checked;
@@ -1024,7 +1210,7 @@ function soundRow(info) {
     const group = info.type === "folder" ? 1 : info.name.includes("/") ? 2 : 0;
     groups[group].push({ value, label, disabled: true });
   }
-  const save = (choice) => inv("skin_sound_choice", { row: info.id, skin: detailSkin, choice }).then(() => loadDetail({ quiet: true }));
+  const save = (choice) => saveDetail("skin_sound_choice", { row: info.id, skin: detailSkin, choice });
   const select = pickList(groups, value, (v) =>
     save(v ? { type: v.slice(0, v.indexOf(":")), name: v.slice(v.indexOf(":") + 1) } : { type: "none", name: "" }),
   );
@@ -1037,7 +1223,7 @@ function soundRow(info) {
 function soundCol() {
   if (!sounds || !sounds.rows.length) return null;
   const reset = el("button", { type: "button", className: "btn" }, t("sound-reset"));
-  reset.addEventListener("click", () => inv("skin_sound_reset", { skin: detailSkin }).then(() => loadDetail({ quiet: true })));
+  reset.addEventListener("click", () => saveDetail("skin_sound_reset", { skin: detailSkin }));
   return el(
     "div",
     { className: "sound-cols" },
@@ -1081,7 +1267,7 @@ function rowSwitch(info) {
   button.setAttribute("aria-checked", on ? "true" : "false");
   button.setAttribute("aria-label", `${t("row-switch")} · ${t(`row-${info.id}`)}`);
   button.addEventListener("click", () =>
-    inv("skin_row_enabled", { row: info.id, skin: detailSkin, enabled: !on }).then(() => loadDetail({ quiet: true })),
+    saveDetail("skin_row_enabled", { row: info.id, skin: detailSkin, enabled: !on }),
   );
   return button;
 }
@@ -1125,14 +1311,12 @@ function detailRow(info) {
   select.addEventListener("change", async () => {
     const v = select.value;
     const choice = v ? { type: v.slice(0, v.indexOf(":")), name: v.slice(v.indexOf(":") + 1) } : null;
-    await inv("skin_choice", { row: info.id, skin: detailSkin, choice });
-    await loadDetail({ quiet: true });
+    await saveDetail("skin_choice", { row: info.id, skin: detailSkin, choice }, () => { select.value = chosenValue; });
   });
   const reset = el("button", { type: "button", className: "btn-icon", title: t("skin-reset") }, "×");
   reset.hidden = !info.chosen;
   reset.addEventListener("click", async () => {
-    await inv("skin_choice", { row: info.id, skin: detailSkin, choice: null });
-    await loadDetail({ quiet: true });
+    await saveDetail("skin_choice", { row: info.id, skin: detailSkin, choice: null });
   });
   const row = el("div", { className: "detail-row" }, rowSwitch(info), previewButton(info), el("span", { className: "name" }, t(`row-${info.id}`)), select, reset);
   enhanceSelect(select);
@@ -1193,9 +1377,11 @@ async function openDetail() {
   for (const id of ["language", "time", "size", "pin", "skin", "status"]) if ($(id)) enhanceSelect($(id));
   data = await inv("settings_init");
   prefs = data.prefs;
+  savedPrefs = { ...prefs };
   skins = await inv("skins_list").catch(() => null);
   skinsAvailable = (await inv("skins_available").catch(() => null)) || [];
   lang = prefs.language === "en" ? "en" : "zh";
+  await refreshAutostart();
   applyText();
   fillGlobal();
   fillStyle();

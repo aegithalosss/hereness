@@ -38,6 +38,8 @@ mod status;
 
 mod storage;
 
+mod settings_write;
+
 const PET_PORT: u16 = 47621;
 
 const DISPLAY_NAME: &str = "在呢 | Hereness";
@@ -94,7 +96,10 @@ fn read_request(stream: &mut TcpStream) -> Option<(String, Vec<u8>)> {
             if let Some(pos) = data.windows(4).position(|w| w == b"\r\n\r\n") {
                 let head_end = pos + 4;
                 let len = content_length(&String::from_utf8_lossy(&data[..head_end]));
-                if head_end + len > MAX_REQUEST_BYTES {
+                if head_end
+                    .checked_add(len)
+                    .map_or(true, |end| end > MAX_REQUEST_BYTES)
+                {
                     return None;
                 }
                 layout = Some((head_end, len));
@@ -177,7 +182,11 @@ fn signal_from_body(
         .as_ref()
         .is_some_and(|v| v.get("cursor_version").is_some());
     if marked_cursor || from == "cursor" {
-        if marked_cursor && from == "claude" && native_cursor() {
+        if marked_cursor
+            && from == "claude"
+            && native_cursor()
+            && cursor::duplicates_native(value.as_ref()?)
+        {
             return None;
         }
         return cursor::signal(value.as_ref()?).map(|signal| ("cursor".into(), signal));
@@ -247,7 +256,7 @@ fn handle_request(mut stream: TcpStream, app: &AppHandle) {
             if path == "/show" {
                 pet_to_front(app);
                 let body = b"hereness";
-                let _ = write ! (stream , "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\nConnection: close\r\n\r\n" , body . len ()) ;
+                let _ = write ! (stream , "HTTP/1.1 200 OK\r\nX-Hereness: desk-pet-v1\r\nContent-Type: text/plain\r\nContent-Length: {}\r\nConnection: close\r\n\r\n" , body . len ()) ;
                 let _ = stream.write_all(body);
                 let _ = stream.flush();
                 let _ = stream.shutdown(Shutdown::Write);
@@ -304,6 +313,8 @@ fn serve_skin(app: &AppHandle, stream: &mut TcpStream, rel: &str) {
         || decoded.contains('\0')
         || decoded.starts_with('/')
         || decoded.starts_with('\\')
+        || decoded.contains(':')
+        || !is_plain_relative(&decoded)
         || !(is_png || is_json || is_sound);
     let reply = if bad {
         None
@@ -385,6 +396,7 @@ fn serve_skin_list(app: &AppHandle, stream: &mut TcpStream, folder: &str) {
         || decoded.contains("..")
         || decoded.contains('/')
         || decoded.contains('\\')
+        || decoded.contains(':')
         || decoded.starts_with('.');
     let reply = if bad {
         None
@@ -420,13 +432,20 @@ fn serve_statuses(app: &AppHandle, stream: &mut TcpStream) {
     let _ = stream.shutdown(Shutdown::Write);
 }
 
+fn is_plain_relative(path: &str) -> bool {
+    std::path::Path::new(path)
+        .components()
+        .all(|c| matches!(c, std::path::Component::Normal(_)))
+}
+
 fn percent_decode(text: &str) -> String {
     let bytes = text.as_bytes();
     let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
     let mut i = 0;
     while i < bytes.len() {
         if bytes[i] == b'%' && i + 2 < bytes.len() {
-            if let Ok(byte) = u8::from_str_radix(&text[i + 1..i + 3], 16) {
+            let hex = std::str::from_utf8(&bytes[i + 1..i + 3]).ok();
+            if let Some(byte) = hex.and_then(|h| u8::from_str_radix(h, 16).ok()) {
                 out.push(byte);
                 i += 3;
                 continue;
@@ -653,7 +672,17 @@ fn on_menu(app: &AppHandle, event: MenuEvent) {
     if id == "bubble_privacy" {
         let on = !bubble::privacy(app);
         if let Err(e) = bubble::set_privacy(app, on) {
-            tell (app , (format ! ("开关没能记住，下次启动可能恢复原样。\n\n{e}") , format ! ("The switch could not be saved, so it may go back to what it was after a restart.\n\n{e}") ,) , true ,) ;
+            tell(
+                app,
+                (
+                    format!("设置没存上，已保留原值。\n\n{e}"),
+                    format!(
+                        "Settings could not be saved. The previous value has been kept.\n\n{e}"
+                    ),
+                ),
+                true,
+            );
+            return;
         }
         let _ = app.emit("bubble-privacy-changed", on);
         return;
@@ -666,17 +695,18 @@ fn on_menu(app: &AppHandle, event: MenuEvent) {
     }
     match id {
         "mute" => {
-            let mut p = prefs::load(app);
+            let mut p = prefs::current(app);
             p.muted = !p.muted;
-            if let Err(e) = prefs::prefs_set(app.clone(), p) {
-                tell(
+            match prefs::prefs_set(app.clone(), p) {
+                Err(e) => tell(
                     app,
                     (
                         format!("静音设置没能保存。\n\n{e}"),
                         format!("The mute setting could not be saved.\n\n{e}"),
                     ),
                     true,
-                );
+                ),
+                Ok(result) => tell_system_failures(app, &result.failures),
             }
         }
         "settings" => {
@@ -698,10 +728,16 @@ fn on_menu(app: &AppHandle, event: MenuEvent) {
 
 fn toggle_ds_price(app: &AppHandle) {
     let on = !ds_price::is_on(app);
-    if let Err(e) = ds_price::set_on(app, on) {
-        tell (app , (format ! ("开关没能记住，下次启动会恢复原样。\n\n{e}") , format ! ("The switch could not be saved, so it will go back to what it was after a restart.\n\n{e}") ,) , true ,) ;
+    if let Err(e) = ds_price::set_on_and_tell(app, on) {
+        tell(
+            app,
+            (
+                format!("设置没存上，已保留原值。\n\n{e}"),
+                format!("Settings could not be saved. The previous value has been kept.\n\n{e}"),
+            ),
+            true,
+        );
     }
-    let _ = app.emit("ds-price-changed", on);
 }
 
 #[derive(Default)]
@@ -723,7 +759,7 @@ fn open_settings(app: &AppHandle, tab: Option<String>) -> Result<(), String> {
         win.show().map_err(|e| e.to_string())?;
         win.unminimize().map_err(|e| e.to_string())?;
         win.set_focus().map_err(|e| e.to_string())?;
-        apply_taskbar_windows(app, &prefs::load(app), Some("settings"));
+        apply_taskbar_windows(app, &prefs::current(app), Some("settings"));
         if let Some(tab) = tab {
             let _ = app.emit("settings-tab", tab);
         }
@@ -746,7 +782,7 @@ fn open_settings(app: &AppHandle, tab: Option<String>) -> Result<(), String> {
     .center()
     .build()
     .map_err(|e| e.to_string())?;
-    apply_taskbar_windows(app, &prefs::load(app), Some("settings"));
+    apply_taskbar_windows(app, &prefs::current(app), Some("settings"));
     Ok(())
 }
 
@@ -783,7 +819,7 @@ fn open_codex_trust(app: AppHandle) -> Result<(), String> {
     if let Some(win) = app.get_webview_window("codex-trust") {
         let _ = win.show();
         let _ = win.set_focus();
-        apply_taskbar_windows(&app, &prefs::load(&app), Some("codex-trust"));
+        apply_taskbar_windows(&app, &prefs::current(&app), Some("codex-trust"));
         return Ok(());
     }
     let title = if prefs::load(&app).zh() {
@@ -802,31 +838,182 @@ fn open_codex_trust(app: AppHandle) -> Result<(), String> {
     .min_inner_size(460.0, 400.0)
     .build()
     .map_err(|e| e.to_string())?;
-    apply_taskbar_windows(&app, &prefs::load(&app), Some("codex-trust"));
+    apply_taskbar_windows(&app, &prefs::current(&app), Some("codex-trust"));
     Ok(())
 }
 
 fn taskbar_skips(hide_main: bool, active_aux: Option<&str>) -> (bool, bool, bool) {
     (
-        hide_main,
-        !hide_main || active_aux != Some("settings"),
-        !hide_main || active_aux != Some("codex-trust"),
+        hide_main || active_aux.is_some(),
+        active_aux != Some("settings"),
+        active_aux != Some("codex-trust"),
     )
 }
 
-fn apply_taskbar_windows(app: &AppHandle, prefs: &prefs::Prefs, active_aux: Option<&str>) {
-    let (main_skip, settings_skip, trust_skip) = taskbar_skips(prefs.hide_from_taskbar, active_aux);
-    if let Some(main) = app.get_webview_window("main") {
-        let _ = main.set_skip_taskbar(main_skip);
+fn open_aux<'a>(
+    prefer: Option<&'a str>,
+    is_open: impl Fn(&str) -> bool,
+    closing: Option<&str>,
+) -> Option<&'a str> {
+    let open = |label: &str| Some(label) != closing && is_open(label);
+    prefer
+        .filter(|l| open(l))
+        .or_else(|| ["settings", "codex-trust"].into_iter().find(|l| open(l)))
+}
+
+#[cfg(target_os = "windows")]
+fn raise_main_under(app: &AppHandle, aux: &tauri::WebviewWindow) {
+    let prefs = prefs::load(app);
+    if prefs.hide_from_taskbar || prefs.pin == "top" {
+        return;
     }
-    for (label, skip) in [("settings", settings_skip), ("codex-trust", trust_skip)] {
-        if let Some(win) = app.get_webview_window(label) {
-            let _ = win.set_skip_taskbar(skip);
+    let Some(main) = app.get_webview_window("main") else {
+        return;
+    };
+    if !main.is_visible().unwrap_or(false) {
+        return;
+    }
+    let _ = main.set_always_on_top(true);
+    let _ = main.set_always_on_top(false);
+    let _ = aux.set_always_on_top(true);
+    let _ = aux.set_always_on_top(false);
+}
+
+fn on_aux_window_event(win: &tauri::Window, event: &tauri::WindowEvent) {
+    let label = win.label();
+    if label != "settings" && label != "codex-trust" {
+        return;
+    }
+    let app = win.app_handle();
+    match event {
+        #[cfg(target_os = "windows")]
+        tauri::WindowEvent::Focused(true) => {
+            if let Some(aux) = app.get_webview_window(label) {
+                raise_main_under(app, &aux);
+            }
         }
+        tauri::WindowEvent::Destroyed => {
+            apply_taskbar_windows_closing(app, &prefs::current(app), None, Some(label));
+        }
+        _ => {}
     }
 }
 
-pub fn apply_prefs(app: &AppHandle, prefs: &prefs::Prefs) {
+fn apply_taskbar_windows(app: &AppHandle, prefs: &prefs::Prefs, prefer: Option<&str>) {
+    apply_taskbar_windows_closing(app, prefs, prefer, None);
+}
+
+#[derive(Default)]
+struct TaskbarApplied(std::sync::Mutex<std::collections::BTreeMap<String, bool>>);
+
+fn apply_taskbar_windows_closing(
+    app: &AppHandle,
+    prefs: &prefs::Prefs,
+    prefer: Option<&str>,
+    closing: Option<&str>,
+) {
+    let snapshot = app
+        .state::<TaskbarApplied>()
+        .0
+        .lock()
+        .map(|known| known.clone())
+        .unwrap_or_default();
+    let result = settings_write::apply_with_restore(
+        (),
+        (),
+        || apply_taskbar_raw(app, prefs, prefer, closing),
+        || restore_taskbar_plan(app, &snapshot),
+    );
+    if let Some(error) = result.error {
+        let unknown = result.actual.is_none();
+        if let Ok(mut fields) = app.state::<prefs::SystemUnknowns>().0.lock() {
+            fields.retain(|field| field != "hide_from_taskbar");
+            if unknown {
+                fields.push("hide_from_taskbar".into());
+            }
+        }
+        let failures = vec![prefs::ApplyFailure {
+            field: "hide_from_taskbar".into(),
+            error,
+            unknown,
+        }];
+        let _ = app.emit("system-apply-failed", &failures);
+        tell_system_failures(app, &failures);
+    }
+}
+
+fn apply_taskbar_raw(
+    app: &AppHandle,
+    prefs: &prefs::Prefs,
+    prefer: Option<&str>,
+    closing: Option<&str>,
+) -> Result<(), String> {
+    if cfg!(target_os = "macos") {
+        return Ok(());
+    }
+    let active_aux = open_aux(prefer, |l| app.get_webview_window(l).is_some(), closing);
+    let (main_skip, settings_skip, trust_skip) = taskbar_skips(prefs.hide_from_taskbar, active_aux);
+    apply_taskbar_plan(
+        app,
+        &[
+            ("main", main_skip),
+            ("settings", settings_skip),
+            ("codex-trust", trust_skip),
+        ],
+    )
+}
+
+fn apply_taskbar_plan(app: &AppHandle, plan: &[(&str, bool)]) -> Result<(), String> {
+    let mut errors = Vec::new();
+    for &(label, skip) in plan {
+        if let Some(win) = app.get_webview_window(label) {
+            let applied = win.set_skip_taskbar(skip);
+            if let Ok(mut known) = app.state::<TaskbarApplied>().0.lock() {
+                if applied.is_ok() {
+                    known.insert(label.into(), skip);
+                } else {
+                    known.remove(label);
+                }
+            }
+            if let Err(error) = applied {
+                errors.push(format!("{label}: {error}"));
+            }
+        }
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("; "))
+    }
+}
+
+fn restore_taskbar_plan(
+    app: &AppHandle,
+    snapshot: &std::collections::BTreeMap<String, bool>,
+) -> Result<(), String> {
+    let mut plan = Vec::new();
+    for label in ["main", "settings", "codex-trust"] {
+        if app.get_webview_window(label).is_some() {
+            plan.push((
+                label,
+                *snapshot
+                    .get(label)
+                    .ok_or("改动前的任务栏状态未知 / Previous taskbar state is unknown")?,
+            ));
+        }
+    }
+    apply_taskbar_plan(app, &plan)
+}
+
+pub fn apply_prefs(
+    app: &AppHandle,
+    prefs: &prefs::Prefs,
+    previous: &prefs::Prefs,
+) -> prefs::SaveOutcome {
+    let mut result = prefs::SaveOutcome {
+        prefs: prefs.clone(),
+        failures: Vec::new(),
+    };
     if let Some(tray) = app.tray_by_id("pet-tray") {
         let _ = tray.set_tooltip(Some(tray_tooltip(prefs.zh())));
         if let Ok(menu) = build_menu(app) {
@@ -834,29 +1021,185 @@ pub fn apply_prefs(app: &AppHandle, prefs: &prefs::Prefs) {
         }
     }
     let Some(win) = app.get_webview_window("main") else {
-        return;
+        for field in ["size", "pin", "hide_from_taskbar"] {
+            result.failures.push(prefs::ApplyFailure {
+                field: field.into(),
+                error: "桌宠窗口不存在 / Pet window is unavailable".into(),
+                unknown: true,
+            });
+        }
+        result.prefs.size = previous.size.clone();
+        result.prefs.pin = previous.pin.clone();
+        result.prefs.hide_from_taskbar = previous.hide_from_taskbar;
+        record_system_state(app, &result);
+        return result;
     };
     let (_, w, h) = prefs::size_px(&prefs.size);
-    let _ = win.set_size(tauri::LogicalSize::new(w, h));
-    let _ = win.set_always_on_top(prefs.pin == "top");
-    apply_taskbar_windows(app, prefs, Some("settings"));
+    let size = settings_write::apply_checked(
+        prefs.size.clone(),
+        || {
+            win.set_size(tauri::LogicalSize::new(w, h))
+                .map_err(|e| e.to_string())
+        },
+        || {
+            let actual = win.inner_size().map_err(|e| e.to_string())?;
+            prefs::size_from_window(
+                actual.width,
+                actual.height,
+                win.scale_factor().map_err(|e| e.to_string())?,
+            )
+        },
+    );
+    let size_unknown = size.actual.is_none();
+    result.prefs.size = size.actual.unwrap_or_else(|| previous.size.clone());
+    if let Some(error) = size.error {
+        result.failures.push(prefs::ApplyFailure {
+            field: "size".into(),
+            error,
+            unknown: size_unknown,
+        });
+    }
+    let pin = settings_write::apply_checked(
+        prefs.pin == "top",
+        || {
+            win.set_always_on_top(prefs.pin == "top")
+                .map_err(|e| e.to_string())
+        },
+        || win.is_always_on_top().map_err(|e| e.to_string()),
+    );
+    result.prefs.pin = match pin.actual {
+        Some(true) => "top".into(),
+        Some(false) if pin.error.is_none() && prefs.pin != "top" => prefs.pin.clone(),
+        Some(false) => if previous.pin == "quiet" {
+            "quiet"
+        } else {
+            "normal"
+        }
+        .into(),
+        None => previous.pin.clone(),
+    };
+    if let Some(error) = pin.error {
+        result.failures.push(prefs::ApplyFailure {
+            field: "pin".into(),
+            error,
+            unknown: pin.actual.is_none(),
+        });
+    }
+    let snapshot = app
+        .state::<TaskbarApplied>()
+        .0
+        .lock()
+        .map(|known| known.clone())
+        .unwrap_or_default();
+    let taskbar = settings_write::apply_with_restore(
+        prefs.hide_from_taskbar,
+        previous.hide_from_taskbar,
+        || apply_taskbar_raw(app, prefs, Some("settings"), None),
+        || restore_taskbar_plan(app, &snapshot),
+    );
+    result.prefs.hide_from_taskbar = taskbar.actual.unwrap_or(previous.hide_from_taskbar);
+    if let Some(error) = taskbar.error {
+        result.failures.push(prefs::ApplyFailure {
+            field: "hide_from_taskbar".into(),
+            error,
+            unknown: taskbar.actual.is_none(),
+        });
+    }
+    record_system_state(app, &result);
+    result
 }
 
-pub fn apply_autostart(app: &AppHandle, on: bool) {
-    use tauri_plugin_autostart::ManagerExt;
-    let manager = app.autolaunch();
-    let now = manager.is_enabled().unwrap_or(false);
-    if on != now {
-        let _ = if on {
-            manager.enable()
-        } else {
-            manager.disable()
-        };
+fn record_system_state(app: &AppHandle, result: &prefs::SaveOutcome) {
+    if let Ok(mut fields) = app.state::<prefs::SystemUnknowns>().0.lock() {
+        *fields = result
+            .failures
+            .iter()
+            .filter(|issue| issue.unknown)
+            .map(|issue| issue.field.clone())
+            .collect();
+    }
+    if let Ok(mut actual) = app.state::<prefs::SystemUnknowns>().1.lock() {
+        *actual = Some(result.prefs.clone());
     }
 }
 
+fn tell_system_failures(app: &AppHandle, failures: &[prefs::ApplyFailure]) {
+    if failures.is_empty() {
+        return;
+    }
+    let names = |en: bool| {
+        failures
+            .iter()
+            .map(|issue| match (issue.field.as_str(), en) {
+                ("size", false) => "大小",
+                ("size", true) => "Size",
+                ("pin", false) => "置顶",
+                ("pin", true) => "Always on top",
+                ("hide_from_taskbar", false) => "任务栏",
+                ("hide_from_taskbar", true) => "Taskbar",
+                (_, false) => "设置",
+                (_, true) => "Settings",
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    tell (app , (format ! ("{} 未能应用；无法查询或恢复的项目状态未知。可以退出桌宠再打开试一次。" , names (false)) , format ! ("{} could not be applied; items that could not be checked or restored have unknown status. Quit the pet and open it again to retry." , names (true))) , true) ;
+}
+
+pub fn apply_autostart(app: &AppHandle, on: bool) -> Result<(), String> {
+    use tauri_plugin_autostart::ManagerExt;
+    let manager = app.autolaunch();
+    let now = manager.is_enabled().map_err(|e| e.to_string())?;
+    if on != now {
+        if on {
+            manager.enable()
+        } else {
+            manager.disable()
+        }
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn autostart_get(app: AppHandle) -> Result<bool, String> {
+    use tauri_plugin_autostart::ManagerExt;
+    app.autolaunch().is_enabled().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn autostart_set(app: AppHandle, on: bool) -> Result<bool, String> {
+    use tauri_plugin_autostart::ManagerExt;
+    let manager = app.autolaunch();
+    settings_write::commit(
+        || {
+            settings_write::autostart(
+                is_dev(),
+                on,
+                || manager.is_enabled().map_err(|e| e.to_string()),
+                |value| {
+                    (if value {
+                        manager.enable()
+                    } else {
+                        manager.disable()
+                    })
+                    .map_err(|e| e.to_string())
+                },
+                |actual| {
+                    let mut p = prefs::current(&app);
+                    p.autostart = actual;
+                    prefs::save(&app, &p)
+                },
+            )
+        },
+        |_| {
+            let _ = app.emit("prefs-changed", prefs::view(&app));
+        },
+    )
+}
+
 pub fn remember_position(app: &AppHandle) {
-    let mut p = prefs::load(app);
+    let mut p = prefs::current(app);
     if !p.remember_position {
         return;
     }
@@ -927,6 +1270,8 @@ fn agent_toggle(app: AppHandle, id: String) -> Vec<AgentInfo> {
 
 #[derive(serde :: Serialize)]
 struct SettingsInit {
+    is_dev: bool,
+    system_unknown: Vec<String>,
     prefs: prefs::Prefs,
     version: String,
     agents: Vec<AgentInfo>,
@@ -944,7 +1289,14 @@ struct SettingsInit {
 fn settings_init(app: AppHandle) -> SettingsInit {
     let (settings_dir_exists, cache_dir_exists) = storage::exists_pair(&app);
     SettingsInit {
-        prefs: prefs::load(&app),
+        is_dev: is_dev(),
+        system_unknown: app
+            .state::<prefs::SystemUnknowns>()
+            .0
+            .lock()
+            .map(|fields| fields.clone())
+            .unwrap_or_default(),
+        prefs: prefs::current(&app),
         version: app.package_info().version.to_string(),
         agents: agent_infos(&app),
         statuses: app.state::<status::StatusList>().snapshot(),
@@ -1185,7 +1537,25 @@ fn summon_existing(port: u16) -> bool {
             Ok(n) => reply.extend_from_slice(&buf[..n]),
         }
     }
-    reply.starts_with(b"HTTP/1.")
+    let Ok(reply) = std::str::from_utf8(&reply) else {
+        return false;
+    };
+    let Some((head, body)) = reply.split_once("\r\n\r\n") else {
+        return false;
+    };
+    let mut lines = head.lines();
+    let Some(status) = lines.next() else {
+        return false;
+    };
+    let mut words = status.split_whitespace();
+    if !matches!(words.next(), Some("HTTP/1.0" | "HTTP/1.1")) || words.next() != Some("200") {
+        return false;
+    }
+    lines.any(|line| {
+        line.split_once(':').is_some_and(|(name, value)| {
+            name.eq_ignore_ascii_case("X-Hereness") && value.trim() == "desk-pet-v1"
+        })
+    }) || matches!(body, "hereness" | "agent-desk-pet")
 }
 
 fn tell_port_busy(app: &AppHandle) {
@@ -1232,90 +1602,5 @@ pub fn run() {
             take_singleton(PET_PORT)
         }
     };
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            None,
-        ))
-        .manage(status::StatusList::default())
-        .manage(folders::KnownFolders::default())
-        .manage(PendingSettingsTab::default())
-        .manage(signals::SignalLog::default())
-        .setup(move |app| {
-            folders::initialize(app.handle()).map_err(std::io::Error::other)?;
-            if listener.is_none() {
-                tell_port_busy(app.handle());
-            }
-            #[cfg(all(target_os = "macos", not(debug_assertions)))]
-            seed_bundled_assets(app.handle());
-            start_state_server(app.handle().clone(), listener);
-            if let Err(e) = build_tray(app.handle()) {
-                tell(
-                    app.handle(),
-                    (
-                        format!("托盘图标这次没建起来：{e}"),
-                        format!("The tray icon could not be created this time: {e}"),
-                    ),
-                    true,
-                );
-            }
-            let p = prefs::load(app.handle());
-            apply_prefs(app.handle(), &p);
-            if p.remember_position && p.has_position {
-                if let Some(win) = app.get_webview_window("main") {
-                    let _ = win.set_position(tauri::PhysicalPosition::new(p.last_x, p.last_y));
-                }
-            }
-            apply_autostart(app.handle(), p.autostart);
-            emit_agents_changed(app.handle());
-            Ok(())
-        })
-        .on_menu_event(on_menu)
-        .invoke_handler(tauri::generate_handler![
-            is_dev,
-            show_menu,
-            open_url,
-            ds_price::ds_price_on,
-            status::set_statuses,
-            status::status_get,
-            status::status_set,
-            bubble::bubble_privacy,
-            bubble::bubble_folder_names,
-            bubble::bubble_set_folder_name,
-            show_settings,
-            settings_take_tab,
-            show_codex_trust,
-            agent_list,
-            agent_toggle,
-            prefs::prefs_get,
-            prefs::prefs_set,
-            prefs::prefs_system_language,
-            settings_init,
-            folders::forget_known_folder,
-            folders::scan_folders,
-            ds_price::ds_price_set,
-            status::status_list,
-            status::open_status_folder,
-            bubble::bubble_set_privacy,
-            skins::skins_list,
-            skins::skins_available,
-            skins::skin_pivot,
-            skins::skin_overrides,
-            skins::skin_choice,
-            skins::skin_rows,
-            skins::skin_row_enabled,
-            skins::skin_rows_off,
-            skins::open_skins_folder,
-            sounds::skin_sound_rows,
-            sounds::skin_sounds,
-            sounds::skin_sound_choice,
-            sounds::skin_sound_reset,
-            storage::open_data_folder,
-            signals::recent_signals
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+    tauri :: Builder :: default () . plugin (tauri_plugin_opener :: init ()) . plugin (tauri_plugin_dialog :: init ()) . plugin (tauri_plugin_clipboard_manager :: init ()) . plugin (tauri_plugin_autostart :: init (tauri_plugin_autostart :: MacosLauncher :: LaunchAgent , None ,)) . manage (status :: StatusList :: default ()) . manage (folders :: KnownFolders :: default ()) . manage (prefs :: SystemUnknowns :: default ()) . manage (TaskbarApplied :: default ()) . manage (PendingSettingsTab :: default ()) . manage (signals :: SignalLog :: default ()) . on_window_event (on_aux_window_event) . setup (move | app | { if let Err (e) = folders :: initialize (app . handle ()) { tell (app . handle () , (format ! ("项目名单和昵称这次已停用，桌宠照常运行。原文件未改动，请检查 folder-names.json 后重启。\n\n{e}") , format ! ("Project names are disabled for this run. The pet will keep running. The original file is unchanged; check folder-names.json and restart.\n\n{e}") ,) , true) ; } if listener . is_none () { tell_port_busy (app . handle ()) ; } # [cfg (all (target_os = "macos" , not (debug_assertions)))] seed_bundled_assets (app . handle ()) ; start_state_server (app . handle () . clone () , listener) ; if let Err (e) = build_tray (app . handle ()) { tell (app . handle () , (format ! ("托盘图标这次没建起来：{e}") , format ! ("The tray icon could not be created this time: {e}")) , true) ; } let p = prefs :: load (app . handle ()) ; let applied = apply_prefs (app . handle () , & p , & p) ; tell_system_failures (app . handle () , & applied . failures) ; if p . remember_position && p . has_position { if let Some (win) = app . get_webview_window ("main") { let _ = win . set_position (tauri :: PhysicalPosition :: new (p . last_x , p . last_y)) ; } } if let Err (e) = settings_write :: autostart_at_startup (is_dev () , | | apply_autostart (app . handle () , p . autostart)) { tell (app . handle () , (format ! ("无法应用开机自启设置：{e}") , format ! ("Could not apply launch at login: {e}")) , true) ; } emit_agents_changed (app . handle ()) ; Ok (()) }) . on_menu_event (on_menu) . invoke_handler (tauri :: generate_handler ! [is_dev , autostart_get , autostart_set , show_menu , open_url , storage :: open_bundled_license , ds_price :: ds_price_on , status :: set_statuses , status :: status_get , status :: status_set , bubble :: bubble_privacy , bubble :: bubble_folder_names , bubble :: bubble_set_folder_name , show_settings , settings_take_tab , show_codex_trust , agent_list , agent_toggle , prefs :: prefs_get , prefs :: prefs_set , prefs :: prefs_system_language , settings_init , folders :: forget_known_folder , folders :: scan_folders , ds_price :: ds_price_set , status :: status_list , status :: open_status_folder , bubble :: bubble_set_privacy , skins :: skins_list , skins :: skins_available , skins :: skin_pivot , skins :: skin_overrides , skins :: skin_choice , skins :: skin_rows , skins :: skin_row_enabled , skins :: skin_rows_off , skins :: open_skins_folder , sounds :: skin_sound_rows , sounds :: skin_sounds , sounds :: skin_sound_choice , sounds :: skin_sound_reset , storage :: open_data_folder , signals :: recent_signals]) . run (tauri :: generate_context ! ()) . expect ("error while running tauri application") ;
 }

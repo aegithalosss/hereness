@@ -156,7 +156,7 @@ impl Agent {
 
 fn hook_command(agent: &Agent, target: &str) -> String {
     let curl = if cfg!(windows) { "curl.exe" } else { "curl" };
-    format ! ("{curl} -s -m 2 --connect-timeout 1 --data-binary \"@-\" \"http://{MARKER}/{target}?from={}\"" , agent . id)
+    format ! ("{curl} -q --noproxy \"*\" -s -m 2 --connect-timeout 1 --data-binary \"@-\" \"http://{MARKER}/{target}?from={}\"" , agent . id)
 }
 
 fn sibling(path: &Path, suffix: &str) -> PathBuf {
@@ -218,23 +218,24 @@ fn remove_pet_hooks(settings: &mut Map<String, Value>) -> usize {
     let Some(Value::Object(hooks)) = settings.get_mut("hooks") else {
         return 0;
     };
-    for groups in hooks.values_mut() {
+    hooks.retain(|_, groups| {
         let Value::Array(groups) = groups else {
-            continue;
+            return true;
         };
-        for group in groups.iter_mut() {
+        let before_groups = groups.len();
+        groups.retain_mut(|group| {
+            let mut keep = true;
             if let Some(Value::Array(list)) = group.get_mut("hooks") {
                 let before = list.len();
                 list.retain(|h| !is_pet_hook(h));
                 removed += before - list.len();
+                keep = before == list.len() || !list.is_empty();
             }
-        }
-        groups.retain(
-            |g| !matches ! (g . get ("hooks") , Some (Value :: Array (l)) if l . is_empty ()),
-        );
-    }
-    hooks.retain(|_, groups| !matches ! (groups , Value :: Array (g) if g . is_empty ()));
-    if hooks.is_empty() {
+            keep
+        });
+        before_groups == groups.len() || !groups.is_empty()
+    });
+    if removed > 0 && hooks.is_empty() {
         settings.remove("hooks");
     }
     removed

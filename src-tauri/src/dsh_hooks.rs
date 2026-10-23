@@ -106,6 +106,34 @@ pub fn is_connected(patch: &Path, config: &Path) -> bool {
     split(&text).is_ok_and(|s| s.is_some())
 }
 
+fn atomic_write_with(
+    path: &Path,
+    bytes: &[u8],
+    validate: impl FnOnce(&[u8]) -> Result<(), String>,
+    write: impl FnOnce(&Path, &[u8]) -> std::io::Result<()>,
+) -> Result<(), String> {
+    let name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or("文件名不是有效文字")?;
+    let temp = path.with_file_name(format!("{name}.hereness.tmp"));
+    write(&temp, bytes).map_err(|e| format!("临时文件写入失败，原文件未改：{e}"))?;
+    let read = fs::read(&temp).map_err(|e| e.to_string())?;
+    if read != bytes {
+        return Err("临时文件内容不一致，原文件未改".into());
+    }
+    validate(&read)?;
+    fs::rename(&temp, path).map_err(|e| format!("替换失败：{e}"))
+}
+
+fn atomic_write(
+    path: &Path,
+    bytes: &[u8],
+    validate: impl FnOnce(&[u8]) -> Result<(), String>,
+) -> Result<(), String> {
+    atomic_write_with(path, bytes, validate, |temp, bytes| fs::write(temp, bytes))
+}
+
 fn write_patch(path: &Path, original: &str, next: &str) -> Result<(), String> {
     parse(next)?;
     if fs::read_to_string(path).map_err(|e| e.to_string())? != original {
@@ -113,26 +141,18 @@ fn write_patch(path: &Path, original: &str, next: &str) -> Result<(), String> {
     }
     let backup = super::hooks::backup_path(path);
     fs::copy(path, &backup).map_err(|e| format!("备份失败，未改文件：{e}"))?;
-    let result: Result<(), String> = (|| {
-        fs::write(path, next).map_err(|e| e.to_string())?;
-        let read = fs::read_to_string(path).map_err(|e| e.to_string())?;
-        parse(&read)?;
-        if read != next {
-            return Err("写入后文件内容不一致".into());
+    atomic_write(path, next.as_bytes(), |read| {
+        parse(std::str::from_utf8(read).map_err(|e| e.to_string())?)?;
+        if fs::read_to_string(path).map_err(|e| e.to_string())? != original {
+            return Err("DSH 设置刚被其他程序改过，请稍后重试。".into());
         }
         Ok(())
-    })();
-    if let Err(e) = result {
-        fs::copy(&backup, path)
-            .map_err(|restore| format!("{e}；恢复失败：{restore}。备份：{}", backup.display()))?;
-        return Err(format!("{e}；已恢复备份。"));
-    }
-    Ok(())
+    })
 }
 
 fn restore_config(config: &Path, old: &Option<Vec<u8>>) -> Result<(), String> {
     match old {
-        Some(bytes) => fs::write(config, bytes),
+        Some(bytes) => return atomic_write(config, bytes, |_| Ok(())),
         None if config.exists() => fs::remove_file(config),
         None => Ok(()),
     }
@@ -169,17 +189,16 @@ pub fn connect(patch: &Path, config: &Path) -> Result<(), String> {
     if let Some(dir) = config.parent() {
         fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
+    if config.exists() {
+        fs::copy(config, super::hooks::backup_path(config))
+            .map_err(|e| format!("备份失败：{e}"))?;
+    }
+    let next_config = super::hooks::dsh_config()?;
+    atomic_write(config, next_config.as_bytes(), |read| {
+        serde_json::from_slice::<serde_json::Value>(read).map_err(|e| e.to_string())?;
+        Ok(())
+    })?;
     let result = (|| {
-        fs::write(config, super::hooks::dsh_config()?).map_err(|e| e.to_string())?;
-        let value: serde_json::Value =
-            serde_json::from_slice(&fs::read(config).map_err(|e| e.to_string())?)
-                .map_err(|e| e.to_string())?;
-        if value
-            != serde_json::from_str::<serde_json::Value>(&super::hooks::dsh_config()?)
-                .map_err(|e| e.to_string())?
-        {
-            return Err("DSH hooks 写入校验失败".into());
-        }
         if next != text {
             write_patch(patch, &text, &next)?;
         }
@@ -199,7 +218,7 @@ pub fn disconnect(patch: &Path, config: &Path) -> Result<(), String> {
     write_patch(patch, &text, &original)?;
     if config.exists() {
         if let Err(e) = fs::remove_file(config) {
-            fs::write(patch, &text)
+            write_patch(patch, &original, &text)
                 .map_err(|restore| format!("删除 hooks 失败：{e}；恢复 patch 失败：{restore}"))?;
             return Err(format!("删除 hooks 失败，已恢复连接配置：{e}"));
         }

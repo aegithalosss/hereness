@@ -226,10 +226,45 @@ pub struct PrefsView {
     pub pet_px: u32,
 }
 
-pub fn view(app: &AppHandle) -> PrefsView {
-    let prefs = load(app);
+#[derive(serde :: Serialize)]
+pub struct ApplyFailure {
+    pub field: String,
+    pub error: String,
+    pub unknown: bool,
+}
+
+#[derive(serde :: Serialize)]
+pub struct SaveOutcome {
+    pub prefs: Prefs,
+    pub failures: Vec<ApplyFailure>,
+}
+
+#[derive(Default)]
+pub struct SystemUnknowns(
+    pub std::sync::Mutex<Vec<String>>,
+    pub std::sync::Mutex<Option<Prefs>>,
+);
+
+pub fn current(app: &AppHandle) -> Prefs {
+    let mut prefs = load(app);
+    if let Ok(actual) = app.state::<SystemUnknowns>().1.lock() {
+        if let Some(actual) = actual.as_ref() {
+            prefs.size = actual.size.clone();
+            prefs.pin = actual.pin.clone();
+            prefs.hide_from_taskbar = actual.hide_from_taskbar;
+        }
+    }
+    prefs
+}
+
+pub fn view_of(prefs: Prefs) -> PrefsView {
     let (pet_px, _, _) = size_px(&prefs.size);
     PrefsView { prefs, pet_px }
+}
+
+pub fn view(app: &AppHandle) -> PrefsView {
+    let prefs = current(app);
+    view_of(prefs)
 }
 
 #[tauri::command]
@@ -238,13 +273,39 @@ pub fn prefs_get(app: AppHandle) -> PrefsView {
 }
 
 #[tauri::command]
-pub fn prefs_set(app: AppHandle, mut prefs: Prefs) -> Result<(), String> {
+pub fn prefs_set(app: AppHandle, mut prefs: Prefs) -> Result<SaveOutcome, String> {
+    let previous = current(&app);
+    prefs.autostart = previous.autostart;
     prefs.normalize_stuck();
     prefs.normalize_volume();
     prefs.normalize_sound_repeat();
     save(&app, &prefs)?;
-    crate::apply_prefs(&app, &prefs);
-    crate::apply_autostart(&app, prefs.autostart);
-    let _ = tauri::Emitter::emit(&app, "prefs-changed", view(&app));
-    Ok(())
+    let mut result = crate::apply_prefs(&app, &prefs, &previous);
+    if !result.failures.is_empty() {
+        if let Err(error) = save(&app, &result.prefs) {
+            result.failures.push(ApplyFailure {
+                field: "prefs".into(),
+                error,
+                unknown: false,
+            });
+        }
+    }
+    let _ = tauri::Emitter::emit(&app, "prefs-changed", view_of(result.prefs.clone()));
+    Ok(result)
+}
+
+pub fn size_from_window(width: u32, height: u32, scale: f64) -> Result<String, String> {
+    if !scale.is_finite() || scale <= 0.0 {
+        return Err("无法读取窗口缩放 / Window scale is unknown".into());
+    }
+    SIZES
+        .iter()
+        .find(|(_, _, w, h)| {
+            (
+                (*w as f64 * scale).round() as u32,
+                (*h as f64 * scale).round() as u32,
+            ) == (width, height)
+        })
+        .map(|(name, _, _, _)| name.to_string())
+        .ok_or("当前窗口尺寸不属于已有档位 / Window size does not match a preset".into())
 }

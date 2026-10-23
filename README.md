@@ -8,6 +8,12 @@
 
 想给小猫换一身自己画的皮肤，看[皮肤制作指南](docs/skin-guide.md)。
 
+### 开始用
+
+1. **下载：** 在 [Releases](https://github.com/aegithalosss/hereness/releases) 下载。Windows 解压 zip，双击 `Hereness.exe`；Mac 打开 dmg，把 Hereness 拖进"应用程序"。
+2. **连接：** 右键小猫，点"连接 Claude Code""连接 Codex"等。Codex 和 DSH 连上以后要重开一次。Cursor 还在测试中。
+3. **卸载：** 右键小猫 → Settings → 高级，最下面有步骤。
+
 ### 隐私
 
 桌宠只在你自己的电脑上工作：
@@ -43,6 +49,12 @@
 A little cat that lives on your desktop and works alongside your AI coding agent (Claude Code, Codex and more). Coding, thinking, waiting for your approval, done: the cat lets you know.
 
 To draw your own skin for the cat, see the [skin guide](docs/skin-guide.md) (in Chinese for now).
+
+### Getting started
+
+1. **Download** from [Releases](https://github.com/aegithalosss/hereness/releases). Windows: unzip and double-click `Hereness.exe`. Mac: open the dmg and drag Hereness into Applications.
+2. **Connect:** right-click the cat and choose "Connect Claude Code", "Connect Codex", and so on. Restart Codex or DSH once after connecting. Cursor support is still in testing.
+3. **Uninstall:** right-click the cat → Settings → Advanced; the steps are at the bottom.
 
 ### Privacy
 

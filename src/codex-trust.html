@@ -135,8 +135,10 @@
     </div>
 
     <script>
-      const CMD =
+      const IS_MAC = (navigator.userAgent || "").includes("Mac");
+      const CMD_WINDOWS =
         'for /f "delims=" %i in (\'dir /s /b "%LOCALAPPDATA%\\OpenAI\\Codex\\bin\\codex.exe"\') do "%i" --no-daemon';
+      const CMD = IS_MAC ? '/Applications/Codex.app/Contents/Resources/codex --no-daemon' : CMD_WINDOWS;
 
       const T = {
         zh: {
@@ -169,11 +171,33 @@
         },
       };
 
+      const MAC_T = {
+        zh: {
+          ...T.zh,
+          s1: "打开<b>终端</b>：在「应用程序 → 实用工具」里找到它。",
+          s3: "输入 <code>/hooks</code> 回车，按界面提示审阅并信任桌宠钩子。",
+          s4: "输入 <code>/quit</code> 退出，再把 <b>Codex 桌面版完全退出、重新打开</b>，开一个新对话。",
+          note:
+            "· 命令使用「应用程序」里的 Codex；如果提示找不到文件，请先确认安装位置。<br />" +
+            "· 以后 Codex 更新过，如果桌宠没反应，就再做一遍信任。",
+        },
+        en: {
+          ...T.en,
+          s1: "Open <b>Terminal</b> from Applications → Utilities.",
+          s3: "Type <code>/hooks</code> and press Return, then follow the on-screen steps to review and trust the pet's hooks.",
+          s4: "Type <code>/quit</code> to exit, then <b>fully quit and reopen the Codex desktop app</b> and start a new chat.",
+          note:
+            "· The command uses Codex in Applications; if the file is not found, check where Codex is installed.<br />" +
+            "· After a Codex update, if the pet stops reacting, do this again.",
+        },
+      };
+
       const $ = (id) => document.getElementById(id);
 
       const systemLang = () => ((navigator.language || "").toLowerCase().startsWith("en") ? "en" : "zh");
       function applyLang(l) {
-        const t = T[l] || T.zh;
+        const translations = IS_MAC ? MAC_T : T;
+        const t = translations[l] || translations.zh;
         document.documentElement.lang = l === "en" ? "en" : "zh-CN";
         document.title = l === "en"
           ? "在呢 | Hereness · Codex trust steps"
@@ -189,7 +213,8 @@
         $("copied").textContent = t.copied;
         $("ok").textContent = t.ok;
       }
-      const langFromPrefs = (p) => (p && p.language === "en" ? "en" : "zh");
+      const langFromPrefs = (view) =>
+        view && view.prefs && view.prefs.language === "en" ? "en" : "zh";
 
       applyLang(systemLang());
       $("cmd-text").textContent = CMD;

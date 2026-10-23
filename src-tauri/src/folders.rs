@@ -5,10 +5,20 @@ use tauri::{AppHandle, Emitter, Manager};
 #[derive(Default)]
 pub struct KnownFolders(pub Mutex<History>);
 
-#[derive(Default)]
 pub struct History {
     path: PathBuf,
     names: BTreeMap<String, String>,
+    disabled: Option<String>,
+}
+
+impl Default for History {
+    fn default() -> Self {
+        Self {
+            path: PathBuf::new(),
+            names: BTreeMap::new(),
+            disabled: Some("项目名单尚未载入 / Project names not loaded".into()),
+        }
+    }
 }
 
 impl History {
@@ -18,9 +28,35 @@ impl History {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => BTreeMap::new(),
             Err(e) => return Err(format!("项目名单读不了：{e}")),
         };
-        Ok(Self { path, names })
+        Ok(Self {
+            path,
+            names,
+            disabled: None,
+        })
+    }
+    fn load_for_startup(path: PathBuf) -> (Self, Option<String>) {
+        match Self::load(path.clone()) {
+            Ok(history) => (history, None),
+            Err(error) => (
+                Self {
+                    path,
+                    names: BTreeMap::new(),
+                    disabled: Some(error.clone()),
+                },
+                Some(error),
+            ),
+        }
+    }
+    fn check_enabled(&self) -> Result<(), String> {
+        match &self.disabled {
+            Some(error) => Err(format!(
+                "项目名单和昵称已停用 / Project names disabled: {error}"
+            )),
+            None => Ok(()),
+        }
     }
     fn save(&self, names: &BTreeMap<String, String>) -> Result<(), String> {
+        self.check_enabled()?;
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
@@ -30,6 +66,7 @@ impl History {
         fs::rename(&temp, &self.path).map_err(|e| e.to_string())
     }
     fn scan(&mut self, paths: Vec<String>) -> Result<(), String> {
+        self.check_enabled()?;
         let mut next = self.names.clone();
         for path in paths {
             let Some(key) = normalize(&path) else {
@@ -73,6 +110,7 @@ impl History {
         Ok(())
     }
     fn rename(&mut self, folder: &str, nickname: &str) -> Result<(), String> {
+        self.check_enabled()?;
         if !self.names.contains_key(folder) {
             return Err("请先扫描 / Scan first".into());
         }
@@ -141,12 +179,12 @@ pub fn initialize(app: &AppHandle) -> Result<(), String> {
         .app_config_dir()
         .map_err(|e| e.to_string())?
         .join("folder-names.json");
-    let history = History::load(path)?;
+    let (history, error) = History::load_for_startup(path);
     *app.state::<KnownFolders>()
         .0
         .lock()
         .map_err(|e| e.to_string())? = history;
-    Ok(())
+    error.map_or(Ok(()), Err)
 }
 
 pub fn list(app: &AppHandle) -> Vec<String> {

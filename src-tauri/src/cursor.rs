@@ -9,9 +9,36 @@ const EVENTS: &[&str] = &[
     "postToolUseFailure",
     "preCompact",
     "stop",
+    "afterAgentThought",
+    "afterAgentResponse",
 ];
 
 const URL: &str = "http://127.0.0.1:47621/state/thinking?from=cursor&hereness=cursor-v1";
+
+fn message_event(event: &str) -> bool {
+    matches!(
+        event,
+        "afterAgentThought" | "afterAgentResponse" | "AgentThought" | "AgentResponse"
+    )
+}
+
+pub fn duplicates_native(v: &Value) -> bool {
+    let Some(event) = v.get("hook_event_name").and_then(Value::as_str) else {
+        return false;
+    };
+    let native = match event {
+        "SessionStart" => "sessionStart",
+        "SessionEnd" => "sessionEnd",
+        "PostToolUse" => "postToolUse",
+        "PostToolUseFailure" => "postToolUseFailure",
+        "PreCompact" => "preCompact",
+        "Stop" => "stop",
+        "AgentThought" => "afterAgentThought",
+        "AgentResponse" => "afterAgentResponse",
+        other => other,
+    };
+    EVENTS.contains(&native)
+}
 
 fn windows_script() -> String {
     format ! ("$ErrorActionPreference='Stop'; try {{ [Console]::InputEncoding=[Text.UTF8Encoding]::new($false); $bytes=[Text.Encoding]::UTF8.GetBytes([Console]::In.ReadToEnd()); $r=[Net.HttpWebRequest]::Create('{URL}'); $r.Proxy=$null; $r.AllowAutoRedirect=$false; $r.Method='POST'; $r.Timeout=2000; $r.ReadWriteTimeout=2000; $r.ContentType='application/json'; $r.ContentLength=$bytes.Length; $s=$r.GetRequestStream(); try {{ $s.Write($bytes,0,$bytes.Length) }} finally {{ $s.Dispose() }}; $reply=$r.GetResponse(); $reply.Close() }} catch {{}}; [Console]::Out.WriteLine('{{}}'); exit 0")
@@ -48,13 +75,18 @@ fn command(windows: bool) -> String {
             encoded_powershell(&windows_script())
         )
     } else {
-        format ! ("/bin/sh -c 'curl -s -m 2 --connect-timeout 1 --data-binary \"@-\" \"{URL}\" >/dev/null 2>&1; printf \"{{}}\\n\"; exit 0'")
+        format ! ("/bin/sh -c 'curl -q --noproxy \"*\" -s -m 2 --connect-timeout 1 --data-binary \"@-\" \"{URL}\" >/dev/null 2>&1; printf \"{{}}\\n\"; exit 0'")
     }
+}
+
+fn legacy_mac_command() -> String {
+    format ! ("/bin/sh -c 'curl -s -m 2 --connect-timeout 1 --data-binary \"@-\" \"{URL}\" >/dev/null 2>&1; printf \"{{}}\\n\"; exit 0'")
 }
 
 fn owned(row: &Value) -> bool {
     row == &json ! ({ "command" : command (false) })
         || row == &json ! ({ "command" : command (true) })
+        || row == &json ! ({ "command" : legacy_mac_command () })
 }
 
 fn remove_owned(settings: &mut Map<String, Value>) -> usize {
@@ -133,7 +165,10 @@ pub fn signal(v: &Value) -> Option<crate::PetSignal> {
     };
     let session = id("conversation_id").or_else(|| id("session_id"))?;
     let event = crate::signals::name_only(v.get("hook_event_name").and_then(Value::as_str))?;
-    let tool = crate::signals::name_only(v.get("tool_name").and_then(Value::as_str));
+    let metadata_only = message_event(&event);
+    let tool = (!metadata_only)
+        .then(|| crate::signals::name_only(v.get("tool_name").and_then(Value::as_str)))
+        .flatten();
     let state = match event.as_str() {
         "sessionStart" | "SessionStart" => Some("idle"),
         "sessionEnd" | "SessionEnd" => None,
@@ -154,6 +189,9 @@ pub fn signal(v: &Value) -> Option<crate::PetSignal> {
         | "afterMCPExecution"
         | "afterFileEdit"
         | "afterAgentThought"
+        | "afterAgentResponse"
+        | "AgentThought"
+        | "AgentResponse"
         | "subagentStop"
         | "SubagentStop" => Some("thinking"),
         "postToolUseFailure" | "PostToolUseFailure" => Some(
@@ -184,7 +222,7 @@ pub fn signal(v: &Value) -> Option<crate::PetSignal> {
                 .filter(|s| !s.trim().is_empty())
                 .map(str::to_owned)
         });
-    let input = v.get("tool_input");
+    let input = v.get("tool_input").filter(|_| !metadata_only);
     let command = text(input.and_then(|i| i.get("command"))).or_else(|| {
         matches!(
             event.as_str(),
@@ -193,7 +231,9 @@ pub fn signal(v: &Value) -> Option<crate::PetSignal> {
         .then(|| text(v.get("command")))
         .flatten()
     });
-    let file = text(input.and_then(|i| i.get("file_path"))).or_else(|| text(v.get("file_path")));
+    let file = (!metadata_only)
+        .then(|| text(input.and_then(|i| i.get("file_path"))).or_else(|| text(v.get("file_path"))))
+        .flatten();
     Some(crate::PetSignal {
         state: state.map(str::to_string),
         session: Some(format!("cursor:{session}")),

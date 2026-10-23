@@ -2,20 +2,39 @@
   "use strict";
 
   const TEXT = {
-    peak: "高峰",
-    offpeak: "半价",
-    title: "DeepSeek 价格时段",
-    now: "现在",
-    next: "下次切换",
-    weekTitle: "本周（当地时间）",
-    allDay: "全天半价",
-    daysLater: (n) => `${n}天`,
-    updated: (date) => `规则更新于 ${date}，以`,
-    link: "DeepSeek 官网",
-    tail: "为准",
-    missing: (years) => `缺少 ${years.join("、")} 年的节假日数据，那几天按普通工作日算`,
-    close: "关闭",
+    zh: {
+      peak: "高峰",
+      offpeak: "半价",
+      title: "DeepSeek 价格时段",
+      now: "现在",
+      next: "下次切换",
+      weekTitle: "本周（当地时间）",
+      allDay: "全天半价",
+      daysLater: (n) => `${n}天`,
+      updated: (date) => `规则更新于 ${date}，以`,
+      link: "DeepSeek 官网",
+      tail: "为准",
+      missing: (years) => `缺少 ${years.join("、")} 年的节假日数据，那几天按普通工作日算`,
+      close: "关闭",
+    },
+    en: {
+      peak: "Peak",
+      offpeak: "Off-peak",
+      title: "DeepSeek price hours",
+      now: "Now",
+      next: "Next change",
+      weekTitle: "This week (local time)",
+      allDay: "Off-peak all day",
+      daysLater: (n) => `${n} ${n === 1 ? "day" : "days"}`,
+      updated: (date) => `Rules updated ${date}, see`,
+      link: "DeepSeek's site",
+      tail: "for details",
+      missing: (years) => `No holiday data for ${years.join(", ")}; those days count as normal workdays`,
+      close: "Close",
+    },
   };
+  let lang = "zh";
+  const T = () => TEXT[lang === "en" ? "en" : "zh"];
 
   const ICONS = {
     peak: "assets/ui/icon_ds_peak.png",
@@ -30,6 +49,7 @@
 
   let engine = null;
   let buildEngine = null;
+  let applyLang = null;
   let on = false;
   let opened = false;
 
@@ -45,7 +65,7 @@
   const nextText = el("span", { className: "ds-next" }, "—");
   const badge = el("div", { id: "ds-badge", hidden: true }, faceImg, faceDot, nextText);
 
-  const closeBtn = el("button", { className: "ds-close", title: TEXT.close, type: "button" }, "×");
+  const closeBtn = el("button", { className: "ds-close", title: TEXT.zh.close, type: "button" }, "×");
   const panel = el("div", { id: "ds-detail", hidden: true });
 
   faceImg.addEventListener("load", () => {
@@ -90,11 +110,13 @@
   }
 
   function weekRow(row) {
+    const t = T();
+    const en = lang === "en";
     const times = row.ranges.length
-      ? row.ranges.join("、")
+      ? row.ranges.join(en ? ", " : "、")
       : row.holidayName
-        ? `${TEXT.allDay}（${row.holidayName}）`
-        : TEXT.allDay;
+        ? (en ? `${t.allDay} (${row.holidayName})` : `${t.allDay}（${row.holidayName}）`)
+        : t.allDay;
     return el(
       "div",
       { className: "ds-week" + (row.isToday ? " today" : "") },
@@ -104,20 +126,21 @@
   }
 
   function renderPanel(now) {
+    const t = T();
     const peak = engine.isPeakAt(now);
-    const link = el("span", { className: "ds-link" }, TEXT.link);
+    const link = el("span", { className: "ds-link" }, t.link);
     link.addEventListener("click", () => {
       if (tauri && engine.sourceUrl) tauri.core.invoke("open_url", { url: engine.sourceUrl }).catch(() => {});
     });
     const parts = [
-      el("div", { className: "ds-head" }, el("span", {}, TEXT.title), closeBtn),
-      el("div", { className: "ds-line" }, el("span", {}, TEXT.now), el("b", {}, peak ? TEXT.peak : TEXT.offpeak)),
-      el("div", { className: "ds-line" }, el("span", {}, TEXT.next), el("b", {}, engine.switchLabel(engine.nextSwitchAt(now), now))),
-      el("div", { className: "ds-week-title" }, TEXT.weekTitle),
+      el("div", { className: "ds-head" }, el("span", {}, t.title), closeBtn),
+      el("div", { className: "ds-line" }, el("span", {}, t.now), el("b", {}, peak ? t.peak : t.offpeak)),
+      el("div", { className: "ds-line" }, el("span", {}, t.next), el("b", {}, engine.switchLabel(engine.nextSwitchAt(now), now))),
+      el("div", { className: "ds-week-title" }, t.weekTitle),
       ...engine.weekRows(now).map(weekRow),
-      el("div", { className: "ds-note" }, TEXT.updated(engine.ruleUpdated), link, ` ${TEXT.tail}`),
+      el("div", { className: "ds-note" }, t.updated(engine.ruleUpdated), link, ` ${t.tail}`),
     ];
-    if (engine.missingYears.length) parts.push(el("div", { className: "ds-warn" }, TEXT.missing(engine.missingYears)));
+    if (engine.missingYears.length) parts.push(el("div", { className: "ds-warn" }, t.missing(engine.missingYears)));
     panel.replaceChildren(...parts);
   }
 
@@ -169,23 +192,26 @@
       window.DsPrice.create(rules, docs, {
         locale: p && p.language === "en" ? "en-US" : p && p.language === "zh" ? "zh-CN" : undefined,
         hour12: p && p.time === "12h" ? true : p && p.time === "24h" ? false : undefined,
-        daysLater: TEXT.daysLater,
+        daysLater: T().daysLater,
       });
-    engine = buildEngine(null);
+
+    applyLang = (p) => {
+      lang = p && p.language === "en" ? "en" : "zh";
+      closeBtn.title = T().close;
+    };
 
     if (tauri) {
       tauri.event.listen("ds-price-changed", (e) => { on = !!e.payload; apply(); });
       tauri.event.listen("prefs-changed", (e) => {
+        applyLang(e.payload && e.payload.prefs);
         engine = buildEngine(e.payload && e.payload.prefs);
         render();
       });
-      tauri.core
-        .invoke("prefs_get")
-        .then((v) => {
-          engine = buildEngine(v && v.prefs);
-          render();
-        })
-        .catch(() => {});
+      const view = await tauri.core.invoke("prefs_get").catch(() => null);
+      applyLang(view && view.prefs);
+      engine = buildEngine(view && view.prefs);
+    } else {
+      engine = buildEngine(null);
     }
     on = await readSwitch();
     apply();
