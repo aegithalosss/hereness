@@ -1,3 +1,64 @@
+# Hereness 0.1.3 发布说明（GitHub Release 用）
+
+小汀起草，Aegi 10-28 看过中文版。
+
+[中文](#中文) · [English](#english)
+
+## 中文
+
+**新增**
+
+- 支持 Antigravity（测试中）：小猫会跟着它思考、读文件、跑命令、干完活。Antigravity 没有"等你批准"的信号，所以不会为批准请求举手；工具跑完小猫才换动作。
+
+**改进**
+
+- 右键菜单重新排了一下：版本号挪到 Settings 上面，静音单独隔开，不容易点错。
+- 语言默认跟着系统走，在设置里选过才固定下来。
+- 音量条松手时才保存。
+- 已经开着一只小猫时再双击，原来那只会跳到最前面；开着的是别的版本时，会提示一句，然后自己退出。
+- 在任务管理器里关掉的开机自启，小猫不会再替你打开回去。搬了文件夹，开机自启的路径也会跟着更新。
+- 选中的皮肤找不到时，会换回 Evie，并告诉你缺的是哪一只。
+- "查看随包许可"会在资源管理器里直接选中 LICENSE 文件。
+- 外接屏拔掉以后，小猫会回到主屏幕。
+
+**修复与安全**
+
+- 只接收本机 agent 发来的信号，网页没法冒充 agent 让小猫乱动。
+- 设置文件读不出来时不会被覆盖；保存时先写临时文件，再整个换上去。
+- 修好了旧版 curl 偶尔丢信号的问题；端口被占用、被系统保留时，提示会说清楚是哪一种。
+
+**升级：** 先退出旧版，再解压新版运行。已经连接过的 agent 不用重连。
+
+---
+
+## English
+
+**New**
+
+- Antigravity support (testing): the cat follows its thinking, file reads, commands and finished turns. Antigravity does not send a signal when it waits for your approval, so the cat will not raise a paw for approval requests, and it changes pose only after each tool finishes.
+
+**Improvements**
+
+- Right-click menu reordered: the version line now sits above Settings, and Mute has its own section so it is harder to click by mistake.
+- Language follows your system until you pick one in Settings.
+- The volume slider saves when you let go.
+- Opening the pet again while one is running brings the running cat to the front. If a different version is running, the new one shows a notice and then quits.
+- Launch at login stays off if you turned it off in Task Manager. If you move the folder, the launch path follows.
+- If the selected skin is missing, the cat falls back to Evie and tells you which skin is missing.
+- "View bundled licenses" now selects the LICENSE file in File Explorer.
+- After you unplug an external monitor, the cat comes back to the main screen.
+
+**Fixes and security**
+
+- The pet only accepts signals from local agents; web pages can no longer pose as an agent.
+- A settings file that cannot be read is no longer overwritten. Saving writes a temporary file first, then swaps it in.
+- Fixed occasional lost signals with older curl. Port errors now say whether the port is in use or reserved by the system.
+
+**Upgrading:** quit the old version first, then unzip and run the new one. Agents you already connected do not need to be reconnected.
+
+---
+
+
 # 在呢 · Hereness
 
 [中文](#中文) · [English](#english)
