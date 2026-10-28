@@ -18,6 +18,8 @@ mod bubble;
 
 mod cursor;
 
+mod antigravity;
+
 mod ds_price;
 
 mod hooks;
@@ -39,6 +41,10 @@ mod status;
 mod storage;
 
 mod settings_write;
+
+mod safe_files;
+
+mod receiver_access;
 
 const PET_PORT: u16 = 47621;
 
@@ -101,6 +107,20 @@ fn read_request(stream: &mut TcpStream) -> Option<(String, Vec<u8>)> {
                     .map_or(true, |end| end > MAX_REQUEST_BYTES)
                 {
                     return None;
+                }
+                let head = String::from_utf8_lossy(&data[..head_end]);
+                if len > 0
+                    && head.lines().skip(1).any(|line| {
+                        line.split_once(':').is_some_and(|(name, value)| {
+                            name.eq_ignore_ascii_case("Expect")
+                                && value
+                                    .split(',')
+                                    .any(|v| v.trim().eq_ignore_ascii_case("100-continue"))
+                        })
+                    })
+                {
+                    stream.write_all(b"HTTP/1.1 100 Continue\r\n\r\n").ok()?;
+                    stream.flush().ok()?;
                 }
                 layout = Some((head_end, len));
             }
@@ -175,9 +195,17 @@ fn signal_from_body(
     from: &str,
     state: Option<String>,
     body: &[u8],
+    query: &str,
     native_cursor: impl FnOnce() -> bool,
 ) -> Option<(String, PetSignal)> {
     let value = serde_json::from_slice::<serde_json::Value>(body).ok();
+    if from == "antigravity" {
+        let event = query
+            .split('&')
+            .find_map(|part| part.strip_prefix("event="))?;
+        return antigravity::signal(value.as_ref()?, event)
+            .map(|signal| ("antigravity".into(), signal));
+    }
     let marked_cursor = value
         .as_ref()
         .is_some_and(|v| v.get("cursor_version").is_some());
@@ -241,23 +269,34 @@ fn handle_request(mut stream: TcpStream, app: &AppHandle) {
                 .and_then(|line| line.split_whitespace().nth(1))
                 .unwrap_or("");
             let (path, query) = path.split_once('?').unwrap_or((path, ""));
+            let dev_origin = receiver_access::dev_origin(
+                cfg!(debug_assertions),
+                app.config().build.dev_url.as_ref(),
+            );
+            let cors = match receiver_access::authorize(&head, path, query, dev_origin.as_deref()) {
+                Ok(cors) => cors,
+                Err(()) => {
+                    let _ = stream.write_all(
+                        b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                    );
+                    return;
+                }
+            };
             if let Some(rel) = path.strip_prefix("/skin/") {
-                serve_skin(app, &mut stream, rel);
+                serve_skin(app, &mut stream, rel, &cors);
                 return;
             }
             if let Some(folder) = path.strip_prefix("/skin-list/") {
-                serve_skin_list(app, &mut stream, folder);
+                serve_skin_list(app, &mut stream, folder, &cors);
                 return;
             }
             if path == "/status/" || path == "/status" {
-                serve_statuses(app, &mut stream);
+                serve_statuses(app, &mut stream, &cors);
                 return;
             }
             if path == "/show" {
                 pet_to_front(app);
-                let body = b"hereness";
-                let _ = write ! (stream , "HTTP/1.1 200 OK\r\nX-Hereness: desk-pet-v1\r\nContent-Type: text/plain\r\nContent-Length: {}\r\nConnection: close\r\n\r\n" , body . len ()) ;
-                let _ = stream.write_all(body);
+                let _ = stream.write_all(show_reply().as_bytes());
                 let _ = stream.flush();
                 let _ = stream.shutdown(Shutdown::Write);
                 return;
@@ -270,11 +309,13 @@ fn handle_request(mut stream: TcpStream, app: &AppHandle) {
             match state {
                 Some(state) => {
                     let from = source_from_query(query);
-                    if let Some((from, signal)) = signal_from_body(from, state, &body, || {
-                        app.path().home_dir().ok().is_some_and(|home| {
-                            cursor::is_connected(&hooks::CURSOR.settings_path(&home))
+                    if let Some((from, signal)) =
+                        signal_from_body(from, state, &body, query, || {
+                            app.path().home_dir().ok().is_some_and(|home| {
+                                cursor::is_connected(&hooks::CURSOR.settings_path(&home))
+                            })
                         })
-                    }) {
+                    {
                         app.state::<signals::SignalLog>()
                             .push(signal_entry(&from, &signal));
                         let _ = app.emit("signal-logged", ());
@@ -302,7 +343,7 @@ fn handle_request(mut stream: TcpStream, app: &AppHandle) {
     }
 }
 
-fn serve_skin(app: &AppHandle, stream: &mut TcpStream, rel: &str) {
+fn serve_skin(app: &AppHandle, stream: &mut TcpStream, rel: &str, cors: &str) {
     let decoded = percent_decode(rel);
     let lower = decoded.to_ascii_lowercase();
     let is_png = lower.ends_with(".png");
@@ -336,7 +377,7 @@ fn serve_skin(app: &AppHandle, stream: &mut TcpStream, rel: &str) {
             } else {
                 "image/png"
             };
-            let _ = write ! (stream , "HTTP/1.1 200 OK\r\nContent-Type: {ctype}\r\nAccess-Control-Allow-Origin: *\r\nCache-Control: no-store\r\nContent-Length: {}\r\nConnection: close\r\n\r\n" , bytes . len ()) ;
+            let _ = write ! (stream , "HTTP/1.1 200 OK\r\nContent-Type: {ctype}\r\n{cors}Cache-Control: no-store\r\nContent-Length: {}\r\nConnection: close\r\n\r\n" , bytes . len ()) ;
             let _ = stream.write_all(&bytes);
         }
         None => {
@@ -390,7 +431,7 @@ fn skin_file_list(dir: &std::path::Path) -> Option<Vec<String>> {
     Some(list)
 }
 
-fn serve_skin_list(app: &AppHandle, stream: &mut TcpStream, folder: &str) {
+fn serve_skin_list(app: &AppHandle, stream: &mut TcpStream, folder: &str, cors: &str) {
     let decoded = percent_decode(folder);
     let bad = decoded.is_empty()
         || decoded.contains("..")
@@ -406,7 +447,7 @@ fn serve_skin_list(app: &AppHandle, stream: &mut TcpStream, folder: &str) {
     match reply {
         Some(list) => {
             let body = serde_json::to_string(&list).unwrap_or_else(|_| "[]".into());
-            let _ = write ! (stream , "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {}\r\nConnection: close\r\n\r\n" , body . len ()) ;
+            let _ = write ! (stream , "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n{cors}Content-Length: {}\r\nConnection: close\r\n\r\n" , body . len ()) ;
             let _ = stream.write_all(body.as_bytes());
         }
         None => {
@@ -420,13 +461,13 @@ fn serve_skin_list(app: &AppHandle, stream: &mut TcpStream, folder: &str) {
     let _ = stream.shutdown(Shutdown::Write);
 }
 
-fn serve_statuses(app: &AppHandle, stream: &mut TcpStream) {
+fn serve_statuses(app: &AppHandle, stream: &mut TcpStream, cors: &str) {
     let files = status::status_dir(app)
         .map(|dir| status::read_all(&dir))
         .unwrap_or_default();
     let body = serde_json::to_string(&serde_json :: json ! ({ "statuses" : files }))
         .unwrap_or_else(|_| "{\"statuses\":[]}".into());
-    let _ = write ! (stream , "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nCache-Control: no-store\r\nContent-Length: {}\r\nConnection: close\r\n\r\n" , body . len ()) ;
+    let _ = write ! (stream , "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n{cors}Cache-Control: no-store\r\nContent-Length: {}\r\nConnection: close\r\n\r\n" , body . len ()) ;
     let _ = stream.write_all(body.as_bytes());
     let _ = stream.flush();
     let _ = stream.shutdown(Shutdown::Write);
@@ -477,7 +518,6 @@ fn is_valid_state_name(name: &str) -> bool {
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
 }
 
-#[tauri::command]
 fn is_dev() -> bool {
     cfg!(debug_assertions)
 }
@@ -518,10 +558,91 @@ fn connect_label(zh: bool, name: &str, installed: bool) -> String {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+struct ScreenRect {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+}
+
+fn safe_pet_position(
+    position: (i32, i32),
+    size: (u32, u32),
+    screens: &[ScreenRect],
+    primary: Option<ScreenRect>,
+) -> Option<(i32, i32)> {
+    if screens.is_empty() || size.0 == 0 || size.1 == 0 {
+        return None;
+    }
+    let (x, y) = (i64::from(position.0), i64::from(position.1));
+    let (w, h) = (i64::from(size.0), i64::from(size.1));
+    if screens.iter().any(|s| {
+        s.width > 0
+            && s.height > 0
+            && x < i64::from(s.x) + i64::from(s.width)
+            && x + w > i64::from(s.x)
+            && y < i64::from(s.y) + i64::from(s.height)
+            && y + h > i64::from(s.y)
+    }) {
+        return Some(position);
+    }
+    let s = primary.filter(|s| s.width > 0 && s.height > 0)?;
+    let clamp = |n: i64| n.clamp(i64::from(i32::MIN), i64::from(i32::MAX)) as i32;
+    Some((
+        clamp(i64::from(s.x) + ((i64::from(s.width) - w) / 2).max(0)),
+        clamp(i64::from(s.y) + ((i64::from(s.height) - h) / 2).max(0)),
+    ))
+}
+
+fn recover_pet_position(win: &tauri::WebviewWindow, saved: Option<(i32, i32)>) {
+    let result = (|| -> tauri::Result<()> {
+        let position = match saved {
+            Some(pos) => pos,
+            None => {
+                let p = win.outer_position()?;
+                (p.x, p.y)
+            }
+        };
+        let size = win.outer_size()?;
+        let screens = win
+            .available_monitors()?
+            .iter()
+            .map(|m| ScreenRect {
+                x: m.position().x,
+                y: m.position().y,
+                width: m.size().width,
+                height: m.size().height,
+            })
+            .collect::<Vec<_>>();
+        let primary = win.primary_monitor()?.map(|m| {
+            let area = m.work_area();
+            ScreenRect {
+                x: area.position.x,
+                y: area.position.y,
+                width: area.size.width,
+                height: area.size.height,
+            }
+        });
+        if let Some(target) =
+            safe_pet_position(position, (size.width, size.height), &screens, primary)
+        {
+            if saved.is_some() || target != position {
+                win.set_position(tauri::PhysicalPosition::new(target.0, target.1))?;
+            }
+        }
+        Ok(())
+    })();
+    if let Err(error) = result {
+        eprintln!("[pet] 检查/恢复窗口位置失败：{error}");
+    }
+}
+
 fn pet_to_front(app: &AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
         let _ = win.show();
         let _ = win.unminimize();
+        recover_pet_position(&win, None);
         let _ = win.set_focus();
     }
 }
@@ -559,6 +680,14 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         )?)?;
     }
     menu.append(&PredefinedMenuItem::separator(app)?)?;
+    let version = format!("{DISPLAY_NAME} {}", app.package_info().version);
+    menu.append(&MenuItem::with_id(
+        app,
+        "version",
+        version,
+        false,
+        None::<&str>,
+    )?)?;
     menu.append(&MenuItem::with_id(
         app,
         "settings",
@@ -566,21 +695,13 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         true,
         None::<&str>,
     )?)?;
+    menu.append(&PredefinedMenuItem::separator(app)?)?;
     menu.append(&CheckMenuItem::with_id(
         app,
         "mute",
         texts.mute,
         true,
         prefs::load(app).muted,
-        None::<&str>,
-    )?)?;
-    menu.append(&PredefinedMenuItem::separator(app)?)?;
-    let version = format!("{DISPLAY_NAME} {}", app.package_info().version);
-    menu.append(&MenuItem::with_id(
-        app,
-        "version",
-        version,
-        false,
         None::<&str>,
     )?)?;
     menu.append(&PredefinedMenuItem::separator(app)?)?;
@@ -697,7 +818,7 @@ fn on_menu(app: &AppHandle, event: MenuEvent) {
         "mute" => {
             let mut p = prefs::current(app);
             p.muted = !p.muted;
-            match prefs::prefs_set(app.clone(), p) {
+            match prefs::prefs_set(app.clone(), p, None) {
                 Err(e) => tell(
                     app,
                     (
@@ -750,7 +871,7 @@ fn settings_take_tab(state: tauri::State<PendingSettingsTab>) -> Option<String> 
 
 fn settings_tab(tab: Option<String>) -> Option<String> {
     tab.map(|t| t.trim().to_string())
-        .filter(|t| matches!(t.as_str(), "global" | "style" | "about"))
+        .filter(|t| matches!(t.as_str(), "global" | "style" | "advanced" | "about"))
 }
 
 fn open_settings(app: &AppHandle, tab: Option<String>) -> Result<(), String> {
@@ -1149,16 +1270,18 @@ fn tell_system_failures(app: &AppHandle, failures: &[prefs::ApplyFailure]) {
 pub fn apply_autostart(app: &AppHandle, on: bool) -> Result<(), String> {
     use tauri_plugin_autostart::ManagerExt;
     let manager = app.autolaunch();
-    let now = manager.is_enabled().map_err(|e| e.to_string())?;
-    if on != now {
-        if on {
-            manager.enable()
-        } else {
-            manager.disable()
-        }
-        .map_err(|e| e.to_string())?;
-    }
-    Ok(())
+    settings_write::refresh_autostart(
+        on,
+        cfg!(windows),
+        || manager.is_enabled().map_err(|e| e.to_string()),
+        |enabled| {
+            if enabled {
+                manager.enable().map_err(|e| e.to_string())
+            } else {
+                manager.disable().map_err(|e| e.to_string())
+            }
+        },
+    )
 }
 
 #[tauri::command]
@@ -1509,25 +1632,30 @@ fn tell(app: &AppHandle, text: (String, String), is_error: bool) {
         .show(|_| {});
 }
 
-fn take_singleton(port: u16) -> Option<TcpListener> {
-    match TcpListener::bind(("127.0.0.1", port)) {
-        Ok(l) => Some(l),
-        Err(e) => {
-            eprintln!("[pet] 收信口 {port} 已被占用：{e}");
-            None
-        }
-    }
+fn take_singleton(port: u16) -> std::io::Result<TcpListener> {
+    TcpListener::bind(("127.0.0.1", port))
 }
 
-fn summon_existing(port: u16) -> bool {
+#[derive(Debug, PartialEq, Eq)]
+enum ExistingPet {
+    SameVersion,
+    DifferentVersion,
+    NotPet,
+}
+
+fn show_reply() -> String {
+    format ! ("HTTP/1.1 200 OK\r\nX-Hereness: desk-pet-v1\r\nX-Hereness-Version: {}\r\nContent-Type: text/plain\r\nContent-Length: 8\r\nConnection: close\r\n\r\nhereness" , env ! ("CARGO_PKG_VERSION"))
+}
+
+fn summon_existing(port: u16) -> ExistingPet {
     let Ok(mut stream) = TcpStream::connect(("127.0.0.1", port)) else {
-        return false;
+        return ExistingPet::NotPet;
     };
     let _ = stream.set_read_timeout(Some(Duration::from_millis(800)));
     let _ = stream.set_write_timeout(Some(Duration::from_millis(800)));
-    let req = format!("GET /show HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n");
+    let req = format ! ("GET /show HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nX-Hereness-Client: desktop\r\nConnection: close\r\n\r\n") ;
     if stream.write_all(req.as_bytes()).is_err() {
-        return false;
+        return ExistingPet::NotPet;
     }
     let mut reply = Vec::new();
     let mut buf = [0u8; 256];
@@ -1538,33 +1666,46 @@ fn summon_existing(port: u16) -> bool {
         }
     }
     let Ok(reply) = std::str::from_utf8(&reply) else {
-        return false;
+        return ExistingPet::NotPet;
     };
     let Some((head, body)) = reply.split_once("\r\n\r\n") else {
-        return false;
+        return ExistingPet::NotPet;
     };
     let mut lines = head.lines();
     let Some(status) = lines.next() else {
-        return false;
+        return ExistingPet::NotPet;
     };
     let mut words = status.split_whitespace();
     if !matches!(words.next(), Some("HTTP/1.0" | "HTTP/1.1")) || words.next() != Some("200") {
-        return false;
+        return ExistingPet::NotPet;
     }
-    lines.any(|line| {
-        line.split_once(':').is_some_and(|(name, value)| {
-            name.eq_ignore_ascii_case("X-Hereness") && value.trim() == "desk-pet-v1"
-        })
-    }) || matches!(body, "hereness" | "agent-desk-pet")
+    let headers: Vec<_> = lines.filter_map(|line| line.split_once(':')).collect();
+    let identified = headers.iter().any(|(name, value)| {
+        name.eq_ignore_ascii_case("X-Hereness") && value.trim() == "desk-pet-v1"
+    }) || matches!(body, "hereness" | "agent-desk-pet");
+    if !identified {
+        return ExistingPet::NotPet;
+    }
+    let versions: Vec<_> = headers
+        .iter()
+        .filter(|(name, _)| name.eq_ignore_ascii_case("X-Hereness-Version"))
+        .collect();
+    if versions.len() == 1 && versions[0].1.trim() == env!("CARGO_PKG_VERSION") {
+        ExistingPet::SameVersion
+    } else {
+        ExistingPet::DifferentVersion
+    }
 }
 
-fn tell_port_busy(app: &AppHandle) {
-    let text = if zh(app) {
-        format ! ("端口 127.0.0.1:{PET_PORT} 被别的程序占着，桌宠这次收不到 agent 的信号——小猫还在，但不会跟着 Claude Code / Codex 动了。\n\n把占用的程序关掉，再重新启动桌宠就能恢复。")
-    } else {
-        format ! ("Port 127.0.0.1:{PET_PORT} is taken by another program, so the pet can't receive agent signals this time — it still shows up, but won't react to Claude Code / Codex.\n\nQuit whatever is using the port and start the pet again.")
-    };
-    tell(app, (text.clone(), text), true);
+fn different_version_text() -> (&'static str, &'static str) {
+    (
+        "已经有一只别的版本在运行，请先退出它。",
+        "A different version of the pet is already running. Please quit it first.",
+    )
+}
+
+fn port_error_text(error: &std::io::Error, windows: bool) -> (String, String) {
+    match error . kind () { std :: io :: ErrorKind :: AddrInUse => (format ! ("端口 127.0.0.1:{PET_PORT} 被别的程序占着，桌宠这次收不到 agent 的信号——小猫还在，但不会跟着 Claude Code / Codex 动了。\n\n把占用的程序关掉，再重新启动桌宠就能恢复。") , format ! ("Port 127.0.0.1:{PET_PORT} is taken by another program, so the pet can't receive agent signals this time — it still shows up, but won't react to Claude Code / Codex.\n\nQuit whatever is using the port and start the pet again.")) , std :: io :: ErrorKind :: PermissionDenied if windows => (format ! ("无法打开端口 127.0.0.1:{PET_PORT}：访问被拒绝，可能落在 Windows 保留端口范围内。桌宠这次收不到 agent 的信号。\n\n可在终端运行以下只读命令，查看保留范围：\nnetsh int ipv4 show excludedportrange protocol=tcp\n\n若范围包含 {PET_PORT}，请核对相关系统设置。\n\n{error}") , format ! ("Cannot open port 127.0.0.1:{PET_PORT}: access was denied. The port may be in a Windows excluded range. The pet cannot receive agent signals this time.\n\nRun this read-only command in a terminal to inspect the ranges:\nnetsh int ipv4 show excludedportrange protocol=tcp\n\nIf a range includes {PET_PORT}, check the related system settings.\n\n{error}") ,) , _ => (format ! ("无法打开端口 127.0.0.1:{PET_PORT}，桌宠这次收不到 agent 的信号。\n\n{error}") , format ! ("Cannot open port 127.0.0.1:{PET_PORT}; the pet cannot receive agent signals this time.\n\n{error}")) , }
 }
 
 #[cfg(all(target_os = "macos", not(debug_assertions)))]
@@ -1592,15 +1733,33 @@ fn seed_bundled_assets(app: &AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let mut different_version = false;
+    let mut bind_error = None;
     let listener = match take_singleton(PET_PORT) {
-        Some(l) => Some(l),
-        None => {
-            if summon_existing(PET_PORT) {
-                std::process::exit(0);
+        Ok(l) => Some(l),
+        Err(_) => {
+            match summon_existing(PET_PORT) {
+                ExistingPet::SameVersion => std::process::exit(0),
+                ExistingPet::DifferentVersion => different_version = true,
+                ExistingPet::NotPet => {}
             }
             std::thread::sleep(Duration::from_millis(300));
-            take_singleton(PET_PORT)
+            match take_singleton(PET_PORT) {
+                Ok(listener) => Some(listener),
+                Err(error) => {
+                    bind_error = Some(error);
+                    None
+                }
+            }
         }
     };
-    tauri :: Builder :: default () . plugin (tauri_plugin_opener :: init ()) . plugin (tauri_plugin_dialog :: init ()) . plugin (tauri_plugin_clipboard_manager :: init ()) . plugin (tauri_plugin_autostart :: init (tauri_plugin_autostart :: MacosLauncher :: LaunchAgent , None ,)) . manage (status :: StatusList :: default ()) . manage (folders :: KnownFolders :: default ()) . manage (prefs :: SystemUnknowns :: default ()) . manage (TaskbarApplied :: default ()) . manage (PendingSettingsTab :: default ()) . manage (signals :: SignalLog :: default ()) . on_window_event (on_aux_window_event) . setup (move | app | { if let Err (e) = folders :: initialize (app . handle ()) { tell (app . handle () , (format ! ("项目名单和昵称这次已停用，桌宠照常运行。原文件未改动，请检查 folder-names.json 后重启。\n\n{e}") , format ! ("Project names are disabled for this run. The pet will keep running. The original file is unchanged; check folder-names.json and restart.\n\n{e}") ,) , true) ; } if listener . is_none () { tell_port_busy (app . handle ()) ; } # [cfg (all (target_os = "macos" , not (debug_assertions)))] seed_bundled_assets (app . handle ()) ; start_state_server (app . handle () . clone () , listener) ; if let Err (e) = build_tray (app . handle ()) { tell (app . handle () , (format ! ("托盘图标这次没建起来：{e}") , format ! ("The tray icon could not be created this time: {e}")) , true) ; } let p = prefs :: load (app . handle ()) ; let applied = apply_prefs (app . handle () , & p , & p) ; tell_system_failures (app . handle () , & applied . failures) ; if p . remember_position && p . has_position { if let Some (win) = app . get_webview_window ("main") { let _ = win . set_position (tauri :: PhysicalPosition :: new (p . last_x , p . last_y)) ; } } if let Err (e) = settings_write :: autostart_at_startup (is_dev () , | | apply_autostart (app . handle () , p . autostart)) { tell (app . handle () , (format ! ("无法应用开机自启设置：{e}") , format ! ("Could not apply launch at login: {e}")) , true) ; } emit_agents_changed (app . handle ()) ; Ok (()) }) . on_menu_event (on_menu) . invoke_handler (tauri :: generate_handler ! [is_dev , autostart_get , autostart_set , show_menu , open_url , storage :: open_bundled_license , ds_price :: ds_price_on , status :: set_statuses , status :: status_get , status :: status_set , bubble :: bubble_privacy , bubble :: bubble_folder_names , bubble :: bubble_set_folder_name , show_settings , settings_take_tab , show_codex_trust , agent_list , agent_toggle , prefs :: prefs_get , prefs :: prefs_set , prefs :: prefs_system_language , settings_init , folders :: forget_known_folder , folders :: scan_folders , ds_price :: ds_price_set , status :: status_list , status :: open_status_folder , bubble :: bubble_set_privacy , skins :: skins_list , skins :: skins_available , skins :: skin_pivot , skins :: skin_overrides , skins :: skin_choice , skins :: skin_rows , skins :: skin_row_enabled , skins :: skin_rows_off , skins :: open_skins_folder , sounds :: skin_sound_rows , sounds :: skin_sounds , sounds :: skin_sound_choice , sounds :: skin_sound_reset , storage :: open_data_folder , signals :: recent_signals]) . run (tauri :: generate_context ! ()) . expect ("error while running tauri application") ;
+    let mut context = tauri::generate_context!();
+    configure_startup_windows(context.config_mut(), different_version);
+    tauri :: Builder :: default () . plugin (tauri :: plugin :: Builder :: < tauri :: Wry > :: new ("resource-access") . js_init_script (receiver_access :: initialization_script ()) . build ()) . plugin (tauri_plugin_opener :: init ()) . plugin (tauri_plugin_dialog :: init ()) . plugin (tauri_plugin_clipboard_manager :: init ()) . plugin (tauri_plugin_autostart :: init (tauri_plugin_autostart :: MacosLauncher :: LaunchAgent , None ,)) . manage (status :: StatusList :: default ()) . manage (folders :: KnownFolders :: default ()) . manage (prefs :: SystemUnknowns :: default ()) . manage (TaskbarApplied :: default ()) . manage (PendingSettingsTab :: default ()) . manage (signals :: SignalLog :: default ()) . on_window_event (on_aux_window_event) . setup (move | app | { if different_version { let (zh_text , en_text) = different_version_text () ; let text = if zh (app . handle ()) { zh_text } else { en_text } ; let handle = app . handle () . clone () ; app . dialog () . message (text) . title (DISPLAY_NAME) . kind (MessageDialogKind :: Error) . show (move | _ | handle . exit (0)) ; return Ok (()) ; } if let Err (e) = folders :: initialize (app . handle ()) { tell (app . handle () , (format ! ("项目名单和昵称这次已停用，桌宠照常运行。原文件未改动，请检查 folder-names.json 后重启。\n\n{e}") , format ! ("Project names are disabled for this run. The pet will keep running. The original file is unchanged; check folder-names.json and restart.\n\n{e}") ,) , true) ; } if listener . is_none () { if let Some (error) = & bind_error { tell (app . handle () , port_error_text (error , cfg ! (windows)) , true) ; } } # [cfg (all (target_os = "macos" , not (debug_assertions)))] seed_bundled_assets (app . handle ()) ; start_state_server (app . handle () . clone () , listener) ; if let Err (e) = build_tray (app . handle ()) { tell (app . handle () , (format ! ("托盘图标这次没建起来：{e}") , format ! ("The tray icon could not be created this time: {e}")) , true) ; } let p = prefs :: load (app . handle ()) ; let applied = apply_prefs (app . handle () , & p , & p) ; tell_system_failures (app . handle () , & applied . failures) ; if p . remember_position && p . has_position { if let Some (win) = app . get_webview_window ("main") { recover_pet_position (& win , Some ((p . last_x , p . last_y))) ; } } if let Err (e) = settings_write :: autostart_at_startup (is_dev () , | | apply_autostart (app . handle () , p . autostart)) { tell (app . handle () , (format ! ("无法应用开机自启设置：{e}") , format ! ("Could not apply launch at login: {e}")) , true) ; } emit_agents_changed (app . handle ()) ; skins :: validate_storage (app . handle ()) ; sounds :: validate_storage (app . handle ()) ; let errors = safe_files :: errors () ; if ! errors . is_empty () { let detail = errors . join ("\n\n") ; tell (app . handle () , (format ! ("部分设置文件读不了，相关保存已停用；桌宠暂用默认值。原文件保留，请检查后重启。\n\n{detail}") , format ! ("Some settings files could not be read. Saving for those files is disabled; defaults are used for now. Originals are preserved. Check the files and restart.\n\n{detail}") ,) , true) ; } Ok (()) }) . on_menu_event (on_menu) . invoke_handler (tauri :: generate_handler ! [autostart_get , autostart_set , show_menu , open_url , storage :: open_bundled_license , ds_price :: ds_price_on , status :: set_statuses , status :: status_get , status :: status_set , bubble :: bubble_privacy , bubble :: bubble_folder_names , bubble :: bubble_set_folder_name , show_settings , settings_take_tab , show_codex_trust , agent_list , agent_toggle , prefs :: prefs_get , prefs :: prefs_set , settings_init , folders :: forget_known_folder , folders :: scan_folders , ds_price :: ds_price_set , status :: open_status_folder , bubble :: bubble_set_privacy , skins :: skins_available , skins :: skin_overrides , skins :: skin_choice , skins :: skin_rows , skins :: skin_row_enabled , skins :: skin_rows_off , skins :: open_skins_folder , sounds :: skin_sound_rows , sounds :: skin_sounds , sounds :: skin_sound_choice , sounds :: skin_sound_reset , storage :: open_data_folder , signals :: recent_signals]) . run (context) . expect ("error while running tauri application") ;
+}
+
+fn configure_startup_windows(config: &mut tauri::utils::config::Config, different_version: bool) {
+    if different_version {
+        config.app.windows.clear();
+    }
 }

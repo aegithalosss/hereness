@@ -44,7 +44,7 @@ fn windows_script() -> String {
     format ! ("$ErrorActionPreference='Stop'; try {{ [Console]::InputEncoding=[Text.UTF8Encoding]::new($false); $bytes=[Text.Encoding]::UTF8.GetBytes([Console]::In.ReadToEnd()); $r=[Net.HttpWebRequest]::Create('{URL}'); $r.Proxy=$null; $r.AllowAutoRedirect=$false; $r.Method='POST'; $r.Timeout=2000; $r.ReadWriteTimeout=2000; $r.ContentType='application/json'; $r.ContentLength=$bytes.Length; $s=$r.GetRequestStream(); try {{ $s.Write($bytes,0,$bytes.Length) }} finally {{ $s.Dispose() }}; $reply=$r.GetResponse(); $reply.Close() }} catch {{}}; [Console]::Out.WriteLine('{{}}'); exit 0")
 }
 
-fn encoded_powershell(script: &str) -> String {
+pub(crate) fn encoded_powershell(script: &str) -> String {
     const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let bytes: Vec<u8> = script.encode_utf16().flat_map(u16::to_le_bytes).collect();
     let mut encoded = String::new();

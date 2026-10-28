@@ -39,6 +39,7 @@ pub struct StatusFile {
     pub id: String,
     pub zh: String,
     pub en: String,
+    pub read_warning: bool,
 }
 
 #[allow(dead_code)]
@@ -72,7 +73,7 @@ pub fn status_dir(app: &AppHandle) -> Option<PathBuf> {
 }
 
 pub fn read_all(dir: &Path) -> Vec<StatusFile> {
-    let mut map: BTreeMap<String, (String, String)> = BTreeMap::new();
+    let mut map: BTreeMap<String, (String, String, bool)> = BTreeMap::new();
     let Ok(entries) = fs::read_dir(dir) else {
         return vec![];
     };
@@ -94,8 +95,15 @@ pub fn read_all(dir: &Path) -> Vec<StatusFile> {
         if id.is_empty() {
             continue;
         }
-        let text = fs::read_to_string(&path).unwrap_or_default();
+        let (text, warning) = match fs::read(&path) {
+            Ok(bytes) => match String::from_utf8(bytes) {
+                Ok(text) => (text, false),
+                Err(e) => (String::from_utf8_lossy(e.as_bytes()).into_owned(), true),
+            },
+            Err(_) => (String::new(), true),
+        };
         let slot = map.entry(id).or_default();
+        slot.2 |= warning;
         if is_en {
             slot.1 = text;
         } else {
@@ -103,7 +111,12 @@ pub fn read_all(dir: &Path) -> Vec<StatusFile> {
         }
     }
     map.into_iter()
-        .map(|(id, (zh, en))| StatusFile { id, zh, en })
+        .map(|(id, (zh, en, read_warning))| StatusFile {
+            id,
+            zh,
+            en,
+            read_warning,
+        })
         .collect()
 }
 
@@ -154,11 +167,6 @@ pub fn set_statuses(state: tauri::State<StatusList>, items: Vec<StatusItem>) {
     if let Ok(mut list) = state.0.lock() {
         *list = items;
     }
-}
-
-#[tauri::command]
-pub fn status_list(state: tauri::State<StatusList>) -> Vec<StatusItem> {
-    state.snapshot()
 }
 
 #[tauri::command]

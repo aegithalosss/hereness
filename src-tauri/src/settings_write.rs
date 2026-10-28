@@ -68,6 +68,27 @@ pub(crate) fn autostart_at_startup(
     }
 }
 
+pub(crate) fn refresh_autostart(
+    on: bool,
+    respect_external_disable: bool,
+    query: impl FnOnce() -> Result<bool, String>,
+    change: impl FnOnce(bool) -> Result<(), String>,
+) -> Result<(), String> {
+    if on && respect_external_disable {
+        if query()? {
+            change(true)
+        } else {
+            Ok(())
+        }
+    } else if on {
+        change(true)
+    } else if query()? {
+        change(false)
+    } else {
+        Ok(())
+    }
+}
+
 pub(crate) struct Applied<T> {
     pub actual: Option<T>,
     pub error: Option<String>,

@@ -158,9 +158,10 @@ const rigImgs = Object.fromEntries(RIG_PARTS.map((p) => [p, document.getElementB
 const rigTailNodes = Object.fromEntries(RIG_TAIL_SEGMENTS.map((seg) => [seg, document.getElementById("rig-" + seg + "-node")]));
 
 const PET_PORT = 47621;
+const resourceKeyQuery = `key=${encodeURIComponent(window.__HERENESS_RESOURCE_KEY__ || "")}`;
 let skinResourceRevision = 0;
 const skinUrl = (rel) =>
-  `http://127.0.0.1:${PET_PORT}/skin/${String(rel).split("/").map(encodeURIComponent).join("/")}${skinResourceRevision ? `?refresh=${skinResourceRevision}` : ""}`;
+  `http://127.0.0.1:${PET_PORT}/skin/${String(rel).split("/").map(encodeURIComponent).join("/")}?${resourceKeyQuery}${skinResourceRevision ? `&refresh=${skinResourceRevision}` : ""}`;
 
 let skin = { name: "evie" };
 
@@ -183,10 +184,15 @@ const canShowRig = () => RIG_BODY_PARTS.every((p) => available.has("idle_" + p))
 const canShowRigEyes = () => canShowRig() && RIG_EYELIDS.every((p) => available.has("idle_" + p));
 
 function applyRigPivots() {
+  for (const el of [...Object.values(rigTailNodes), ...Object.values(rigImgs)]) el.style.transformOrigin = "";
   const rig = skinInfo.rig && skinInfo.rig.idle;
   if (!rig) return;
-  const [w, h] = skinInfo.size || [400, 400];
-  for (const [name, [px, py]] of Object.entries(rig.pivots || {})) {
+  const [w, h] = canvasSize(skinInfo.size);
+  for (const [name, value] of Object.entries(record(rig.pivots))) {
+    if (!RIG_PARTS.includes(name)) continue;
+    const pair = pairIn(value, w, h);
+    if (!pair) continue;
+    const [px, py] = pair;
     const el = rigTailNodes[name] || rigImgs[name];
     if (el) el.style.transformOrigin = `${(px / w) * 100}% ${(py / h) * 100}%`;
   }
@@ -198,14 +204,15 @@ const DEFAULT_SHADOW_PCT = [200 / 400, 332 / 400];
 let grabArtXRatio = DEFAULT_GRAB_PCT[0];
 let grabArtYRatio = DEFAULT_GRAB_PCT[1];
 
-function applySkinGeometry() {
-  const [sw, sh] = skinInfo.size || [400, 400];
-  const W = sw || 400, H = sh || 400;
-  const pairIn = (v, w, h) =>
+const record = (value) => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+const canvasSize = (value) => Array.isArray(value) && value.length === 2 && value.every((n) => typeof n === "number" && Number.isFinite(n) && n > 0) ? value : [400, 400];
+const pairIn = (v, w, h) =>
     Array.isArray(v) && v.length === 2 && v.every((n) => Number.isFinite(Number(n))) &&
     Number(v[0]) >= 0 && Number(v[0]) < w && Number(v[1]) >= 0 && Number(v[1]) < h
       ? [Number(v[0]), Number(v[1])]
       : null;
+function applySkinGeometry() {
+  const [W, H] = canvasSize(skinInfo.size);
   const legacy = Number(skinInfo.footY);
   const pv =
     pairIn(skinInfo.pivot, W, H) ||
@@ -224,9 +231,25 @@ function applySkinGeometry() {
 
 let probeGen = 0;
 
-function probeSkin() {
+async function probeSkin() {
   const gen = ++probeGen;
   const fresh = () => gen === probeGen;
+  try {
+  if (tauri) {
+    try {
+      const list = await tauri.core.invoke("skins_available");
+      if (!fresh()) return false;
+      if (Array.isArray(list)) {
+        anySkins = list.length > 0;
+        missingSkin = list.some((s) => s.value === requestedSkin) ? "" : requestedSkin;
+        const effective = missingSkin ? "evie" : requestedSkin;
+        if (skin.name !== effective) skinRows = {};
+        skin = { name: effective };
+        updateSkinHint();
+      }
+    } catch (error) { console.warn("[skin-list]", error); }
+  }
+  if (!fresh()) return false;
   skinInfo = { overlays: {} };
   clearFx();
   fileOf.clear();
@@ -244,13 +267,13 @@ function probeSkin() {
     return true;
   };
 
-  const listP = fetch(`http://127.0.0.1:${PET_PORT}/skin-list/${encodeURIComponent(skin.name)}`, { cache: "no-store" })
+  const listP = fetch(`http://127.0.0.1:${PET_PORT}/skin-list/${encodeURIComponent(skin.name)}?${resourceKeyQuery}`, { cache: "no-store" })
     .then((r) => (r.ok ? r.json() : []))
     .catch(() => []);
   const infoP = fetch(skinUrl(`${skin.name}/skin.json`))
     .then((r) => (r.ok ? r.json() : null))
     .catch(() => null);
-  return Promise.all([listP, infoP]).then(([list, j]) => {
+  const result = await Promise.all([listP, infoP]).then(([list, j]) => {
     if (!fresh()) return false;
     available.clear();
     for (const f of (Array.isArray(list) ? list.slice().sort() : [])) {
@@ -273,6 +296,17 @@ function probeSkin() {
     if (!skinInfo.overlays || typeof skinInfo.overlays !== "object") skinInfo.overlays = {};
     return finish();
   });
+  if (fresh()) await loadSounds();
+  return result;
+  } catch (error) {
+    console.warn("[skin-probe]", error);
+    if (!fresh()) return false;
+    available.clear(); fileOf.clear(); folderImages.clear();
+    skinRows = {};
+    skinInfo = { overlays: {} };
+    applySkinGeometry(); applyRigPivots(); clearFx();
+    return true;
+  }
 }
 
 const imageName = (name) => name.toLowerCase().replace(/^.*\//, "");
@@ -304,7 +338,7 @@ let frameTimer = null;
 function setFrame(name) {
   imgEl.src = src(name);
   const entries = Object.entries(skinInfo.overlays)
-    .filter(([overlay, o]) => variants(overlay).length && Array.isArray(o && o.on) && o.on.some((n) => imageName(n) === imageName(name)))
+    .filter(([overlay, o]) => variants(overlay).length && Array.isArray(o && o.on) && o.on.some((n) => typeof n === "string" && imageName(n) === imageName(name)))
     .slice(0, fxEls.length);
   const key = skin.name + "|" + entries.map(([overlay]) => overlay).join(",");
   if (key === fxKey) return;
@@ -375,9 +409,9 @@ function fxPlan(o, size) {
 }
 
 function startFx(el, overlay, o) {
-  const plan = fxPlan(o, skinInfo.size);
-  const [w, h] = skinInfo.size || [400, 400];
-  const [px, py] = (o && o.pivot) || [w / 2, h / 2];
+  const [w, h] = canvasSize(skinInfo.size);
+  const plan = fxPlan(o, [w, h]);
+  const [px, py] = pairIn(o && o.pivot, w, h) || [w / 2, h / 2];
   el.style.transformOrigin = `${(px / w) * 100}% ${(py / h) * 100}%`;
   const url = `url("${src(variants(overlay)[0])}")`;
   if (plan.colors.length) {
@@ -760,7 +794,7 @@ function updateRigEyes(closed) {
 function scheduleBlink() {
   const [min, max] = BLINK_EVERY_MS;
   setTimeout(() => {
-    const now = imgEl.src.split("/").pop().replace(".png", "");
+    const now = decodeURIComponent(imgEl.src.split("?")[0].split("/").pop()).replace(/\.png$/i, "");
     if (shown === "state:idle" && !canShowRig() && available.has("idle_blink") && variants("idle").includes(now)) {
       imgEl.src = src("idle_blink");
       setTimeout(() => {
@@ -896,9 +930,8 @@ function stopTest() {
 
 let ready;
 function start() {
-  ready = probeSkin().then(() => {
+  ready = probeSkin().catch((error) => console.warn("[skin-start]", error)).finally(() => {
     started = true;
-    refresh();
     setInterval(refresh, 250);
     document.addEventListener("visibilitychange", refresh);
     scheduleBlink();
@@ -906,6 +939,7 @@ function start() {
     scheduleEar("earL");
     scheduleEar("earR");
     scheduleRigBlink();
+    refresh();
   });
   return ready;
 }
@@ -1160,22 +1194,22 @@ function applySkins(map) {
 let resourceRefreshGeneration = 0;
 async function refreshSkinResources() {
   const generation = ++resourceRefreshGeneration;
-  const name = skin.name;
+  const name = requestedSkin;
   skinResourceRevision++;
   probing = true;
   const probe = probeSkin();
   const thisProbe = probeGen;
   try {
     const [map, fresh] = await Promise.all([
-      tauri.core.invoke("skin_overrides"), probe, loadSounds(),
+      tauri.core.invoke("skin_overrides"), probe,
     ]);
-    if (!fresh || generation !== resourceRefreshGeneration || name !== skin.name) return;
+    if (!fresh || generation !== resourceRefreshGeneration || name !== requestedSkin) return;
     probing = false;
     applySkins(map);
   } catch (error) {
     console.warn("[skin-resources-refresh]", error);
   } finally {
-    if (generation === resourceRefreshGeneration && thisProbe === probeGen && name === skin.name) {
+    if (generation === resourceRefreshGeneration && thisProbe === probeGen && name === requestedSkin) {
       probing = false;
       refresh();
     }
@@ -1237,6 +1271,11 @@ function volumeOf100() {
   if (!Number.isFinite(n)) return 70;
   return Math.min(100, Math.max(0, Math.round(n)));
 }
+function previewVolume(value) {
+  if (!Number.isInteger(value) || value < 0 || value > 100) return;
+  prefs.volume = value;
+  if (playing) playing.volume = value / 100;
+}
 function playSound(row, list = soundRows[row || ""], fromAgent = false) {
   if (prefs.muted || (fromAgent && prefs.pin === "quiet")) return;
   if (!list || !list.length || typeof Audio !== "function") return;
@@ -1272,8 +1311,8 @@ let statusLang = "";
 function applySkinPref(value) {
   const raw = String(value || "").trim();
   const name = (raw.startsWith("user:") ? raw.slice(5) : raw) || "evie";
-  const changed = name !== skin.name;
-  skin = { name };
+  const changed = name !== requestedSkin;
+  if (changed) { requestedSkin = name; skin = { name }; }
   return changed;
 }
 
@@ -1288,15 +1327,21 @@ function applyPrefs(view) {
     loadStatuses();
   }
   bubbleSig = "";
-  if (applySkinPref(prefs.skin)) {
-    loadSounds();
+  const changedSkin = applySkinPref(prefs.skin);
+  updateSkinHint();
+  if (!started) return;
+  if (changedSkin) {
     available.clear();
     fileOf.clear();
     probing = true;
-    probeSkin().then((fresh) => {
-      probing = false;
+    const probe = probeSkin();
+    const generation = probeGen;
+    probe.then((fresh) => {
       if (!fresh) return;
       shown = null;
+    }).catch((error) => console.warn("[skin-change]", error)).finally(() => {
+      if (generation !== probeGen) return;
+      probing = false;
       refresh();
     });
   } else {
@@ -1307,7 +1352,7 @@ function applyPrefs(view) {
 let status = { id: Statuses.BUILTIN_ID, texts: {}, off: false };
 let labelChoice = null;
 
-const STATUS_URL = `http://127.0.0.1:${PET_PORT}/status/`;
+const STATUS_URL = `http://127.0.0.1:${PET_PORT}/status/?${resourceKeyQuery}`;
 
 const statusKey = (id) => String(id).replace(/^(state|reaction):/, "");
 
@@ -1372,6 +1417,7 @@ if (tauri) {
     })
     .catch(() => {});
   tauri.event.listen("prefs-changed", (e) => applyPrefs(e.payload));
+  tauri.event.listen("volume-preview", (e) => previewVolume(e.payload?.volume));
   tauri.event.listen("agents-changed", (e) => {
     connected = Number(e.payload) || 0;
     refresh();
@@ -1405,16 +1451,16 @@ if (tauri) {
 }
 window.setStatus = setStatus;
 
-const AGENT_NAMES = { claude: "Claude Code", codex: "Codex", dsh: "DSH", cursor: "Cursor" };
+const AGENT_NAMES = { claude: "Claude Code", codex: "Codex", dsh: "DSH", cursor: "Cursor", antigravity: "Antigravity" };
 const BUBBLE_TEXT = {
   zh: { needs: "找你", approval: "在等你批准", ask: "有问题问你", answer: "在等你回答", gotit: "知道了", run: "想运行", edit: "想修改", read: "想查看", autoMaybe: "(开了自动批准的话请无视)" },
   en: { needs: "needs you", approval: "waiting for your approval", ask: "has a question for you", answer: "waiting for your answer", gotit: "Got it", run: "wants to run", edit: "wants to edit", read: "wants to read", autoMaybe: "(ignore this if auto-approve is on)" },
 };
 const bubbleWord = (key) => (BUBBLE_TEXT[prefs.language === "en" ? "en" : "zh"] || {})[key] || key;
 const bubbleColon = () => (prefs.language === "en" ? ": " : "：");
-const RUN_TOOLS = new Set(["Bash", "Shell", "PowerShell", "run_shell_command", "bash", "shell"]);
-const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit", "apply_patch", "edit", "write_file"]);
-const READ_TOOLS = new Set(["Read", "Grep", "Glob", "WebSearch", "WebFetch", "read_file", "grep_search", "glob"]);
+const RUN_TOOLS = new Set(["Bash", "Shell", "PowerShell", "run_shell_command", "bash", "shell", "run_command"]);
+const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit", "apply_patch", "edit", "write_file", "write_to_file"]);
+const READ_TOOLS = new Set(["Read", "Grep", "Glob", "WebSearch", "WebFetch", "read_file", "grep_search", "glob", "view_file"]);
 const needYou = () => Statuses.truncate(Statuses.pick(status.texts.need_you), 16) || bubbleWord("needs");
 let bubbleOpen = false;
 let bubbleSig = "";
@@ -1572,21 +1618,21 @@ function receiveSignal(payload) {
 }
 if (tauri) tauri.event.listen("pet-state", (e) => receiveSignal(e.payload));
 
-function updateSkinHint(anySkins) {
+let requestedSkin = "evie";
+let missingSkin = "";
+let anySkins = true;
+function updateSkinHint() {
   if (!skinHintEl) return;
-  skinHintEl.textContent = prefs.language === "en" ? "Skins folder not found" : "找不到 skins 文件夹";
-  skinHintEl.hidden = !!anySkins;
+  skinHintEl.textContent = !anySkins
+    ? (prefs.language === "en" ? "Skins folder not found" : "找不到 skins 文件夹")
+    : (prefs.language === "en" ? `Skin not found: ${missingSkin}` : `找不到皮肤 ${missingSkin}`);
+  skinHintEl.hidden = anySkins && !missingSkin;
 }
 
 (async function boot() {
   if (tauri) {
     try {
       applyPrefs(await tauri.core.invoke("prefs_get"));
-    } catch {
-    }
-    try {
-      const list = await tauri.core.invoke("skins_available");
-      updateSkinHint(Array.isArray(list) && list.length > 0);
     } catch {
     }
   }

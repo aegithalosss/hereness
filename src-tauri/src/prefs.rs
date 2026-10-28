@@ -1,6 +1,6 @@
 use std::fs;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Manager};
 
@@ -20,6 +20,8 @@ pub const SIZES: &[(&str, u32, u32, u32)] = &[
 #[serde(default)]
 pub struct Prefs {
     pub language: String,
+    #[serde(skip_deserializing)]
+    pub language_from_system: bool,
     pub time: String,
     pub size: String,
     pub skin: String,
@@ -42,6 +44,7 @@ impl Default for Prefs {
     fn default() -> Self {
         Self {
             language: LANGUAGE_SYSTEM.into(),
+            language_from_system: true,
             time: "24h".into(),
             size: "m".into(),
             skin: String::new(),
@@ -144,7 +147,8 @@ fn is_chinese_language(system: Option<&str>) -> bool {
 }
 
 fn with_language(mut prefs: Prefs, system: Option<&str>) -> Prefs {
-    if prefs.language != "zh" && prefs.language != "en" {
+    prefs.language_from_system = prefs.language != "zh" && prefs.language != "en";
+    if prefs.language_from_system {
         prefs.language = if is_chinese_language(system) {
             "zh".into()
         } else {
@@ -152,11 +156,6 @@ fn with_language(mut prefs: Prefs, system: Option<&str>) -> Prefs {
         };
     }
     prefs
-}
-
-#[tauri::command]
-pub fn prefs_system_language(app: AppHandle) -> String {
-    load(&app).language
 }
 
 fn path(app: &AppHandle) -> Option<PathBuf> {
@@ -186,15 +185,16 @@ pub fn load(app: &AppHandle) -> Prefs {
 }
 
 fn load_from(file: Option<PathBuf>, system: Option<&str>, migrate: impl FnOnce(&Prefs)) -> Prefs {
-    let mut prefs: Prefs = file
-        .and_then(|p| fs::read_to_string(p).ok())
-        .and_then(|text| serde_json::from_str(&text).ok())
-        .unwrap_or_default();
+    let loaded = file
+        .map(|p| crate::safe_files::read_json::<Prefs>(&p))
+        .unwrap_or_else(|| Ok(Prefs::default()));
+    let readable = loaded.is_ok();
+    let mut prefs = loaded.unwrap_or_default();
     prefs = with_language(prefs, system);
     prefs.normalize_stuck();
     prefs.normalize_volume();
     prefs.normalize_sound_repeat();
-    if migrate_skin(&mut prefs.skin) {
+    if migrate_skin(&mut prefs.skin) && readable {
         migrate(&prefs);
     }
     prefs
@@ -202,11 +202,40 @@ fn load_from(file: Option<PathBuf>, system: Option<&str>, migrate: impl FnOnce(&
 
 pub fn save(app: &AppHandle, prefs: &Prefs) -> Result<(), String> {
     let p = path(app).ok_or("找不到程序设置文件夹")?;
+    save_to(&p, prefs)
+}
+
+fn save_to(p: &Path, prefs: &Prefs) -> Result<(), String> {
     if let Some(dir) = p.parent() {
         fs::create_dir_all(dir).map_err(|e| format!("建不了文件夹：{e}"))?;
     }
-    let text = serde_json::to_string_pretty(prefs).map_err(|e| e.to_string())?;
-    fs::write(&p, format!("{text}\n")).map_err(|e| format!("记不住设置：{e}"))
+    let mut stored = serde_json::to_value(prefs).map_err(|e| e.to_string())?;
+    if let Some(fields) = stored.as_object_mut() {
+        fields.remove("language_from_system");
+        if prefs.language_from_system {
+            fields.insert("language".into(), LANGUAGE_SYSTEM.into());
+        }
+    }
+    let text = serde_json::to_string_pretty(&stored).map_err(|e| e.to_string())?;
+    crate::safe_files::write_json::<Prefs>(p, &format!("{text}\n"))
+}
+
+fn select_language(
+    next: &mut Prefs,
+    previous: &Prefs,
+    selected: Option<&str>,
+) -> Result<(), String> {
+    if let Some(language) = selected {
+        if !matches!(language, "zh" | "en") {
+            return Err("不认识的语言 / Unknown language".into());
+        }
+        next.language = language.into();
+        next.language_from_system = false;
+    } else {
+        next.language = previous.language.clone();
+        next.language_from_system = previous.language_from_system;
+    }
+    Ok(())
 }
 
 pub fn size_px(name: &str) -> (u32, u32, u32) {
@@ -273,8 +302,13 @@ pub fn prefs_get(app: AppHandle) -> PrefsView {
 }
 
 #[tauri::command]
-pub fn prefs_set(app: AppHandle, mut prefs: Prefs) -> Result<SaveOutcome, String> {
+pub fn prefs_set(
+    app: AppHandle,
+    mut prefs: Prefs,
+    language: Option<String>,
+) -> Result<SaveOutcome, String> {
     let previous = current(&app);
+    select_language(&mut prefs, &previous, language.as_deref())?;
     prefs.autostart = previous.autostart;
     prefs.normalize_stuck();
     prefs.normalize_volume();

@@ -49,7 +49,8 @@ const T = {
     "store-cache-open": "打开缓存文件夹",
     "store-both-open": "打开设置和缓存文件夹",
     "storage-hint-mac": "桌宠的设置和网页缓存都存在下面这个文件夹里。\n彻底卸载：\n1. 把所有 agent 都断开，关掉开机自动启动；\n2. 自己做的皮肤（skins）和状态提示（status）还要的话，记得先保存；\n3. 打开下面这个文件夹；\n4. 退出桌宠，删掉这个文件夹；\n5. 最后把 Hereness 拖到废纸篓；\n6. 你的个人文件夹（~/）里，.claude、.codex、.cursor、.qwen、.dsh 这几个隐藏文件夹中（在访达里按 Cmd+Shift+. 显示），名字以 .hereness.bak 结尾的文件是桌宠改设置前留的备份，一起删掉。",
-    "license-open-failed": "无法打开随包许可。请确认安装包完整，或重新下载桌宠。",
+    "license-open-failed": "无法在文件夹中选中随包许可。LICENSE 应在 Hereness.exe 所在文件夹；开发版在项目根目录。",
+    "license-open-failed-mac": "无法在访达中选中随包许可。LICENSE 应在 Hereness.app/Contents/Resources/ 内；开发版在项目根目录。",
     "system-apply-failed": "部分设置未生效。",
     "apply-size-failed": "大小未能应用。可以退出桌宠再打开试一次。",
     "apply-pin-failed": "置顶未能应用。可以退出桌宠再打开试一次。",
@@ -133,8 +134,10 @@ const T = {
     "agent-dsh-q": "在你电脑上运行的 DSH 干活时，小猫会跟着它的活换动作。DSH 停下来等你决定时，小猫不会举手，因为 DSH 没有发这个信号。在小猫这边连接或断开 DSH 以后，要重启一次 DSH 才生效。",
     "agent-dsh-limit": "（不会举手）",
     "agent-cursor-q": "Cursor（测试中）。小猫会跟着干活、干完、出错换动作。Cursor 没有“等你批准”的信号，所以小猫不会为批准请求举手。如果已连接 Claude Code，并在 Cursor 开着“导入第三方 hooks”，不在这里连接 Cursor，小猫也会动，气泡写 Cursor。连接或断开后，Cursor 会自动重新载入配置；如果没反应，重启一下 Cursor。",
+    "agent-antigravity-q": "Antigravity（测试中）。Antigravity 没有“等你批准”的信号，所以小猫不会为批准请求举手；工具跑完小猫才换动作，可能慢半拍。连接或断开后，如果没反应，重启一下 Antigravity。",
     "skin-title": "这只皮肤的图",
     "skin-missing": "skins 文件夹要和 exe 放在同一个文件夹里",
+    "skin-not-found": "找不到皮肤 {name}",
     "skin-missing-mac": "点「打开这只皮肤的文件夹」看看",
     "status-open": "打开状态提示文件夹",
     "skin-reset": "恢复默认",
@@ -221,7 +224,8 @@ const T = {
     "store-cache-open": "Open cache folder",
     "store-both-open": "Open settings and cache folder",
     "storage-hint-mac": "The pet's settings and web cache both live in the folder below.\nTo uninstall completely:\n1. Disconnect every agent and turn off launch at startup;\n2. Save any skins or status prompts you made, if you still want them;\n3. Open the folder below;\n4. Quit the pet and delete this folder;\n5. Finally, drag Hereness to the Trash;\n6. In your home folder (~/), inside the hidden .claude, .codex, .cursor, .qwen and .dsh folders (press Cmd+Shift+. in Finder to show them), delete the files ending in .hereness.bak. They are backups the pet saved before changing settings.",
-    "license-open-failed": "Could not open the bundled license. Check that the installation is complete, or download the pet again.",
+    "license-open-failed": "Could not select the bundled license in its folder. LICENSE should be next to Hereness.exe, or in the project root for a development build.",
+    "license-open-failed-mac": "Could not select the bundled license in Finder. LICENSE should be in Hereness.app/Contents/Resources/, or in the project root for a development build.",
     "system-apply-failed": "Some settings did not take effect.",
     "apply-size-failed": "Size could not be applied. Quit the pet and open it again to retry.",
     "apply-pin-failed": "Always on top could not be applied. Quit the pet and open it again to retry.",
@@ -305,8 +309,10 @@ const T = {
     "agent-dsh-q": "When DSH runs on your computer, the cat changes its actions to follow its work. When DSH pauses for your decision, the cat will not raise a paw because DSH does not send that signal. After connecting or disconnecting DSH through the cat, restart DSH for the change to take effect.",
     "agent-dsh-limit": "(no approval signal)",
     "agent-cursor-q": "Cursor (Testing). The cat follows its work, completion, and errors. Cursor does not send a signal when waiting for your approval, so the cat will not raise a paw for approval requests. If Claude Code is already connected and third-party hook imports are enabled in Cursor, the cat can follow Cursor without connecting it here; bubbles show Cursor. Cursor reloads the configuration automatically after connecting or disconnecting. If nothing happens, restart Cursor.",
+    "agent-antigravity-q": "Antigravity (Testing). Antigravity does not send a signal when waiting for your approval, so the cat will not raise a paw for approval requests. The cat changes its tool action only after the tool finishes, so it may be a little late. After connecting or disconnecting, if nothing happens, restart Antigravity.",
     "skin-title": "This skin's images",
     "skin-missing": "The skins folder has to be in the same folder as the exe",
+    "skin-not-found": "Skin not found: {name}",
     "skin-missing-mac": "Click \"Open this skin's folder\" to check",
     "status-open": "Open status folder",
     "skin-reset": "Reset to default",
@@ -461,6 +467,7 @@ function enhanceSelect(select) {
   const owner = {
     groups: () => selectGroups(select),
     value: () => select.value,
+    repeatSelection: () => select === $("language") && !!prefs.language_from_system,
     onChange: (v) => {
       SELECT_VALUE.set.call(select, v);
       sync();
@@ -547,10 +554,10 @@ function highlight(row) {
 }
 function choosePick(row) {
   if (!pickOwner || !row || row.classList.contains("disabled")) return;
-  const { valueAtOpen, onChange, button } = pickOwner;
+  const { valueAtOpen, onChange, button, repeatSelection } = pickOwner;
   closePick();
   button.focus();
-  if (row.dataset.value !== valueAtOpen) onChange(row.dataset.value);
+  if (row.dataset.value !== valueAtOpen || repeatSelection?.()) onChange(row.dataset.value);
 }
 function closePick() {
   if (!pickOwner) return;
@@ -602,8 +609,9 @@ function settingError(key, error) {
   message.textContent = `${t(key)}${error ? ` ${String(error)}` : ""}`;
 }
 
-function savePrefs() {
+function savePrefs(languageChoice = false) {
   const desired = { ...prefs };
+  const selectedLanguage = languageChoice ? desired.language : null;
   const base = requestedPrefs || savedPrefs || desired;
   const patch = Object.fromEntries(Object.entries(desired).filter(([key, value]) => value !== base[key]));
   requestedPrefs = desired;
@@ -613,7 +621,7 @@ function savePrefs() {
     let error;
     let failures = [];
     try {
-      const result = await inv("prefs_set", { prefs: next });
+      const result = await inv("prefs_set", { prefs: next, language: selectedLanguage });
       savedPrefs = result?.prefs || next;
       failures = result?.failures || [];
       data.system_unknown = failures.filter((issue) => issue.unknown).map((issue) => issue.field);
@@ -634,6 +642,11 @@ function savePrefs() {
   });
   prefsWrite = job.catch((error) => { settingError("save-failed", error); });
   return prefsWrite;
+}
+
+function previewVolume(volume) {
+  if (window.__TAURI__) window.__TAURI__.event.emitTo("main", "volume-preview", { volume })
+    .catch((error) => settingError("refresh-failed", error));
 }
 
 function showSystemFailures(failures) {
@@ -822,7 +835,7 @@ function fillStorage() {
   mark("store-cache-missing", data.cache_dir_exists);
 }
 
-const SIGNAL_SOURCES = { claude: "Claude Code", codex: "Codex", qwen: "Qwen Code", dsh: "DSH", cursor: "Cursor" };
+const SIGNAL_SOURCES = { claude: "Claude Code", codex: "Codex", qwen: "Qwen Code", dsh: "DSH", cursor: "Cursor", antigravity: "Antigravity" };
 let signalsOpen = false;
 
 function syncSignalsButton() {
@@ -871,14 +884,17 @@ async function fillSkinSelect() {
   const skin = $("skin");
   const missing = $("skin-missing");
   skin.replaceChildren();
+  const current = (prefs && prefs.skin) || "evie";
+  if (!skinsAvailable.some((s) => s.value === current)) {
+    skin.append(el("option", { value: current, disabled: true }, t("skin-not-found").replace("{name}", current)));
+  }
   for (const s of skinsAvailable) skin.append(el("option", { value: s.value }, s.label));
   if (missing) {
     missing.hidden = skinsAvailable.length > 0;
   }
   enhanceSelect(skin).hidden = skinsAvailable.length === 0;
   if (skinsAvailable.length) {
-    const current = (prefs && prefs.skin) || skinsAvailable[0].value;
-    skin.value = skinsAvailable.some((s) => s.value === current) ? current : skin.options[0].value;
+    skin.value = current;
   }
   if (!skin.dataset.wired) {
     skin.dataset.wired = "1";
@@ -951,7 +967,7 @@ function wire() {
     link.addEventListener("click", async (event) => {
       event.preventDefault();
       try { await inv("open_bundled_license"); }
-      catch (error) { settingError("license-open-failed", error); }
+      catch (error) { settingError(IS_MAC ? "license-open-failed-mac" : "license-open-failed", error); }
     });
   }
   document.querySelectorAll("a[data-external-url]").forEach((link) => {
@@ -1020,8 +1036,9 @@ function wire() {
   }
   $("language").addEventListener("change", async (e) => {
     prefs.language = e.target.value;
+    prefs.language_from_system = false;
     lang = prefs.language === "en" ? "en" : "zh";
-    if (!await savePrefs()) return;
+    if (!await savePrefs(true)) return;
     applyText();
     fillGlobal();
     fillStyle();
@@ -1058,7 +1075,11 @@ function wire() {
     }
     paintRange(e.target);
     prefs.volume = n;
-    savePrefs();
+    previewVolume(n);
+  });
+  $("volume").addEventListener("change", async () => {
+    await savePrefs();
+    previewVolume(prefs.volume);
   });
   $("status-open").addEventListener("click", () => inv("open_status_folder").catch(() => {}));
   $("detail-open").addEventListener("click", () => {
@@ -1087,13 +1108,12 @@ function wire() {
 }
 
 let rows = [];
-let skins = null;
 let skinsAvailable = [];
 let detailSkin = "";
 let detailGeneration = 0;
 let preview = null;
 const previewUrl = (skin, file) =>
-  `http://127.0.0.1:47621/skin/${[skin, ...file.split("/")].map(encodeURIComponent).join("/")}${previewRevision ? `?refresh=${previewRevision}` : ""}`;
+  `http://127.0.0.1:47621/skin/${[skin, ...file.split("/")].map(encodeURIComponent).join("/")}?key=${encodeURIComponent(window.__HERENESS_RESOURCE_KEY__ || "")}${previewRevision ? `&refresh=${previewRevision}` : ""}`;
 
 function iconButton(icon, label, disabled = false) {
   const button = el("button", { type: "button", className: "btn-icon filled", disabled, title: label });
@@ -1386,7 +1406,6 @@ async function openDetail() {
   data = await inv("settings_init");
   prefs = data.prefs;
   savedPrefs = { ...prefs };
-  skins = await inv("skins_list").catch(() => null);
   skinsAvailable = (await inv("skins_available").catch(() => null)) || [];
   lang = prefs.language === "en" ? "en" : "zh";
   await refreshAutostart();

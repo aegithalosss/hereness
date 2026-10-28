@@ -67,11 +67,14 @@ fn license_path(
     Ok(root.join("LICENSE"))
 }
 
-fn open_license(path: &Path, open: impl FnOnce(&Path) -> Result<(), String>) -> Result<(), String> {
+fn reveal_license(
+    path: &Path,
+    reveal: impl FnOnce(&Path) -> Result<(), String>,
+) -> Result<(), String> {
     if !path.is_file() {
         return Err("随包 LICENSE 不存在 / Bundled LICENSE was not found".into());
     }
-    open(path)
+    reveal(path)
 }
 
 #[tauri::command]
@@ -89,9 +92,9 @@ pub fn open_bundled_license(app: AppHandle) -> Result<(), String> {
         executable.as_deref(),
         resources.as_deref(),
     )?;
-    open_license(&path, |file| {
+    reveal_license(&path, |file| {
         app.opener()
-            .open_path(file.to_string_lossy(), None::<&str>)
+            .reveal_item_in_dir(file)
             .map_err(|e| e.to_string())
     })
 }

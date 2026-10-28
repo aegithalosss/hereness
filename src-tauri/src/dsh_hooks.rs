@@ -90,6 +90,15 @@ fn split(text: &str) -> Result<Option<String>, String> {
     Ok(Some(original))
 }
 
+fn split_at(path: &Path, text: &str) -> Result<Option<String>, String> {
+    split(text).map_err(|error| marker_error(path, &error))
+}
+
+fn marker_error(path: &Path, detail: &str) -> String {
+    let backup = crate::hooks::backup_path(path);
+    format ! ("DSH 桌宠配置标记或管理段不完整、被改过，未改文件：\n{}\n\n请先另存当前文件，再对照备份恢复桌宠改动前的内容后重试：\n{}\n不要猜着删除个人配置。\n\nDSH pet markers or the managed block are incomplete or edited. No files were changed:\n{}\n\nSave a copy of the current file first, then review this backup and restore the content from before the pet change before retrying:\n{}\nDo not delete personal configuration by guessing.\n\n{detail}" , path . display () , backup . display () , path . display () , backup . display ())
+}
+
 fn make_block(config: &str, empty: Option<&str>) -> String {
     let saved = empty
         .map(|s| format!("{EMPTY}{}\n", serde_json::to_string(s).unwrap()))
@@ -112,18 +121,7 @@ fn atomic_write_with(
     validate: impl FnOnce(&[u8]) -> Result<(), String>,
     write: impl FnOnce(&Path, &[u8]) -> std::io::Result<()>,
 ) -> Result<(), String> {
-    let name = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .ok_or("文件名不是有效文字")?;
-    let temp = path.with_file_name(format!("{name}.hereness.tmp"));
-    write(&temp, bytes).map_err(|e| format!("临时文件写入失败，原文件未改：{e}"))?;
-    let read = fs::read(&temp).map_err(|e| e.to_string())?;
-    if read != bytes {
-        return Err("临时文件内容不一致，原文件未改".into());
-    }
-    validate(&read)?;
-    fs::rename(&temp, path).map_err(|e| format!("替换失败：{e}"))
+    crate::safe_files::atomic_write_with(path, bytes, validate, write)
 }
 
 fn atomic_write(
@@ -161,7 +159,7 @@ fn restore_config(config: &Path, old: &Option<Vec<u8>>) -> Result<(), String> {
 
 pub fn connect(patch: &Path, config: &Path) -> Result<(), String> {
     let text = fs::read_to_string(patch).map_err(|e| format!("读不了 DSH 设置：{e}"))?;
-    let original = split(&text)?.unwrap_or_else(|| text.clone());
+    let original = split_at(patch, &text)?.unwrap_or_else(|| text.clone());
     let rows = parse(&original)?;
     if !rows.is_empty()
         && !original
@@ -212,12 +210,17 @@ pub fn connect(patch: &Path, config: &Path) -> Result<(), String> {
 
 pub fn disconnect(patch: &Path, config: &Path) -> Result<(), String> {
     let text = fs::read_to_string(patch).map_err(|e| e.to_string())?;
-    let Some(original) = split(&text)? else {
+    let Some(original) = split_at(patch, &text)? else {
         return Ok(());
     };
     write_patch(patch, &text, &original)?;
     if config.exists() {
-        if let Err(e) = fs::remove_file(config) {
+        let remove = if crate::safe_files::is_symlink(config) {
+            atomic_write(config, b"{}\n", |_| Ok(()))
+        } else {
+            fs::remove_file(config).map_err(|e| e.to_string())
+        };
+        if let Err(e) = remove {
             write_patch(patch, &original, &text)
                 .map_err(|restore| format!("删除 hooks 失败：{e}；恢复 patch 失败：{restore}"))?;
             return Err(format!("删除 hooks 失败，已恢复连接配置：{e}"));

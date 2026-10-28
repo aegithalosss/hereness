@@ -199,9 +199,12 @@ pub fn pick(sounds: &Path, user: Option<&SoundChoice>, skin_default: Option<&str
 
 fn raw_choices(app: &AppHandle) -> BTreeMap<String, SoundChoice> {
     choices_path(app)
-        .and_then(|p| fs::read_to_string(p).ok())
-        .and_then(|t| serde_json::from_str(&t).ok())
+        .and_then(|p| crate::safe_files::read_json(&p).ok())
         .unwrap_or_default()
+}
+
+pub fn validate_storage(app: &AppHandle) {
+    let _ = raw_choices(app);
 }
 
 fn choices_path(app: &AppHandle) -> Option<std::path::PathBuf> {
@@ -350,6 +353,7 @@ pub fn skin_sound_choice(
 #[tauri::command]
 pub fn skin_sound_reset(app: AppHandle, skin: String) -> Result<(), String> {
     let skin = clean_skin(&skin).ok_or("皮肤名不对")?;
+    crate::skins::check_rows_off(&app)?;
     let mut all = raw_choices(&app);
     let prefix = format!("{skin}|");
     all.retain(|key, _| !key.starts_with(&prefix));
@@ -363,7 +367,7 @@ fn save_choices(app: &AppHandle, all: &BTreeMap<String, SoundChoice>) -> Result<
         fs::create_dir_all(dir).map_err(|e| format!("建不了文件夹：{e}"))?;
     }
     let text = serde_json::to_string_pretty(all).map_err(|e| e.to_string())?;
-    fs::write(&path, format!("{text}\n")).map_err(|e| format!("记不住选择：{e}"))?;
+    crate::safe_files::write_json::<BTreeMap<String, SoundChoice>>(&path, &format!("{text}\n"))?;
     let _ = tauri::Emitter::emit(app, "sounds-changed", ());
     Ok(())
 }

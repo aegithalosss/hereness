@@ -137,7 +137,16 @@ pub const CURSOR: Agent = Agent {
     hooks: &[],
 };
 
-pub const AGENTS: &[&Agent] = &[&CLAUDE, &CODEX, &QWEN, &DSH, &CURSOR];
+pub const ANTIGRAVITY: Agent = Agent {
+    id: "antigravity",
+    name: "Antigravity",
+    dir: ".gemini/config",
+    file: "hooks.json",
+    remove_if_empty: false,
+    hooks: &[],
+};
+
+pub const AGENTS: &[&Agent] = &[&CLAUDE, &CODEX, &QWEN, &DSH, &CURSOR, &ANTIGRAVITY];
 
 pub fn dsh_config() -> Result<String, String> {
     let mut settings = Map::new();
@@ -150,6 +159,9 @@ impl Agent {
         home.join(self.dir).join(self.file)
     }
     pub fn installed(&self, home: &Path) -> bool {
+        if self.id == "antigravity" {
+            return home.join(".gemini/antigravity").is_dir();
+        }
         home.join(self.dir).is_dir()
     }
 }
@@ -195,9 +207,7 @@ pub(crate) fn write_settings(path: &Path, settings: &Map<String, Value>) -> Resu
     backup(path)?;
     let mut text = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
     text.push('\n');
-    let tmp = sibling(path, "tmp");
-    fs::write(&tmp, text).map_err(|e| format!("写入失败：{e}"))?;
-    fs::rename(&tmp, path).map_err(|e| format!("写入失败：{e}"))
+    crate::safe_files::atomic_write(path, text.as_bytes())
 }
 
 fn backup(path: &Path) -> Result<(), String> {
@@ -278,6 +288,9 @@ pub fn is_connected(path: &Path) -> bool {
 }
 
 pub fn connected(agent: &Agent, path: &Path) -> bool {
+    if agent.id == "antigravity" {
+        return crate::antigravity::is_connected(path);
+    }
     if agent.id == "cursor" {
         crate::cursor::is_connected(path)
     } else {
@@ -286,6 +299,9 @@ pub fn connected(agent: &Agent, path: &Path) -> bool {
 }
 
 pub fn connect(agent: &Agent, path: &Path) -> Result<(), String> {
+    if agent.id == "antigravity" {
+        return crate::antigravity::connect(path);
+    }
     if agent.id == "cursor" {
         return crate::cursor::connect(path);
     }
@@ -296,6 +312,9 @@ pub fn connect(agent: &Agent, path: &Path) -> Result<(), String> {
 }
 
 pub fn disconnect(agent: &Agent, path: &Path) -> Result<(), String> {
+    if agent.id == "antigravity" {
+        return crate::antigravity::disconnect(path);
+    }
     if agent.id == "cursor" {
         return crate::cursor::disconnect(path);
     }
@@ -303,7 +322,7 @@ pub fn disconnect(agent: &Agent, path: &Path) -> Result<(), String> {
     if remove_pet_hooks(&mut s) == 0 {
         return Ok(());
     }
-    if s.is_empty() && agent.remove_if_empty {
+    if s.is_empty() && agent.remove_if_empty && !crate::safe_files::is_symlink(path) {
         backup(path)?;
         return fs::remove_file(path).map_err(|e| format!("删除失败：{e}"));
     }

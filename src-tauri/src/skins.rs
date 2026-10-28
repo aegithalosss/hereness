@@ -46,8 +46,6 @@ fn case_match(mut names: Vec<String>, requested: &str) -> Option<String> {
         .find(|n| n.to_lowercase() == requested.to_lowercase())
 }
 
-const DEFAULT_PIVOT_PCT: (f64, f64) = (200.0 / 400.0, 325.0 / 400.0);
-
 #[derive(Clone, serde :: Serialize, serde :: Deserialize)]
 pub struct Choice {
     #[serde(rename = "type")]
@@ -104,9 +102,13 @@ fn overrides_path(app: &AppHandle) -> Option<PathBuf> {
 
 fn raw_overrides(app: &AppHandle) -> BTreeMap<String, Choice> {
     overrides_path(app)
-        .and_then(|p| fs::read_to_string(p).ok())
-        .and_then(|t| serde_json::from_str(&t).ok())
+        .and_then(|p| crate::safe_files::read_json(&p).ok())
         .unwrap_or_default()
+}
+
+pub fn validate_storage(app: &AppHandle) {
+    let _ = raw_overrides(app);
+    let _ = raw_rows_off(app);
 }
 
 fn key_of(skin: &str, row: &str) -> String {
@@ -340,8 +342,7 @@ fn rows_off_path(app: &AppHandle) -> Option<PathBuf> {
 
 fn raw_rows_off(app: &AppHandle) -> BTreeMap<String, Vec<String>> {
     rows_off_path(app)
-        .and_then(|p| fs::read_to_string(p).ok())
-        .and_then(|t| serde_json::from_str(&t).ok())
+        .and_then(|p| crate::safe_files::read_json(&p).ok())
         .unwrap_or_default()
 }
 
@@ -385,18 +386,24 @@ fn save_rows_off(app: &AppHandle, all: &BTreeMap<String, Vec<String>>) -> Result
         fs::create_dir_all(dir).map_err(|e| format!("建不了文件夹：{e}"))?;
     }
     let text = serde_json::to_string_pretty(all).map_err(|e| e.to_string())?;
-    fs::write(&path, format!("{text}\n")).map_err(|e| format!("记不住开关：{e}"))?;
+    crate::safe_files::write_json::<BTreeMap<String, Vec<String>>>(&path, &format!("{text}\n"))?;
     let _ = tauri::Emitter::emit(app, "skins-changed", resolved(app));
     let _ = tauri::Emitter::emit(app, "sounds-changed", ());
     Ok(())
 }
 
 pub fn clear_rows_off(app: &AppHandle, skin: &str) -> Result<(), String> {
+    check_rows_off(app)?;
     let mut all = raw_rows_off(app);
     if all.remove(skin).is_none() {
         return Ok(());
     }
     save_rows_off(app, &all)
+}
+
+pub fn check_rows_off(app: &AppHandle) -> Result<(), String> {
+    let path = rows_off_path(app).ok_or("找不到程序设置文件夹")?;
+    crate::safe_files::read_json::<BTreeMap<String, Vec<String>>>(&path).map(|_| ())
 }
 
 #[tauri::command]
@@ -658,7 +665,15 @@ pub fn rows_of_with(
                     .iter()
                     .filter_map(|p| names.get(&format!("idle_{p}")).cloned())
                     .collect();
-                display = format!("{} (folder)", used[0].rsplit_once('/').unwrap().0);
+                let parent = used
+                    .first()
+                    .and_then(|p| p.rsplit_once('/').map(|(dir, _)| dir));
+                let same_dir = parent.filter(|dir| {
+                    used.iter()
+                        .all(|p| p.rsplit_once('/').map(|(d, _)| d) == Some(*dir))
+                });
+                display = same_dir
+                    .map_or_else(|| "idle (rig)".to_string(), |dir| format!("{dir} (folder)"));
                 fallback_value.clear();
             }
             if kind == "file" && !used.is_empty() {
@@ -810,46 +825,6 @@ fn scan_skin(dir: &Path) -> (BTreeMap<String, String>, Vec<String>) {
 }
 
 #[derive(serde :: Serialize)]
-pub struct SkinsList {
-    pub dir: String,
-    pub files: Vec<String>,
-    pub folders: Vec<String>,
-}
-
-#[tauri::command]
-pub fn skins_list(app: AppHandle) -> SkinsList {
-    let dir = skins_dir(&app);
-    let mut files = vec![];
-    let mut folders = vec![];
-    if let Some(dir) = &dir {
-        let _ = fs::create_dir_all(dir);
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                let name = entry.file_name().to_string_lossy().into_owned();
-                if path.is_dir() {
-                    folders.push(name);
-                } else if path
-                    .extension()
-                    .is_some_and(|x| x.eq_ignore_ascii_case("png"))
-                {
-                    files.push(name);
-                }
-            }
-        }
-    }
-    files.sort();
-    folders.sort();
-    SkinsList {
-        dir: dir
-            .map(|d| d.to_string_lossy().into_owned())
-            .unwrap_or_default(),
-        files,
-        folders,
-    }
-}
-
-#[derive(serde :: Serialize)]
 pub struct SkinInfo {
     pub value: String,
     pub label: String,
@@ -990,7 +965,7 @@ pub fn skin_choice(
         fs::create_dir_all(dir).map_err(|e| format!("建不了文件夹：{e}"))?;
     }
     let text = serde_json::to_string_pretty(&all).map_err(|e| e.to_string())?;
-    fs::write(&path, format!("{text}\n")).map_err(|e| format!("记不住选择：{e}"))?;
+    crate::safe_files::write_json::<BTreeMap<String, Choice>>(&path, &format!("{text}\n"))?;
     let _ = tauri::Emitter::emit(&app, "skins-changed", resolved(&app));
     Ok(())
 }
@@ -1074,78 +1049,4 @@ fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
         }
     }
     Ok(())
-}
-
-pub fn pivot_text(skin_json: Option<&str>) -> String {
-    let json: serde_json::Value = skin_json
-        .and_then(|text| serde_json::from_str(text).ok())
-        .unwrap_or(serde_json::Value::Null);
-    let (w, h) = canvas_size(&json);
-    let pair = |v: Option<&serde_json::Value>| -> Option<(f64, f64)> {
-        let a = v?.as_array()?;
-        if a.len() != 2 {
-            return None;
-        }
-        Some((as_num(&a[0])?, as_num(&a[1])?))
-    };
-    let (x, y) = pair(json.get("pivot"))
-        .filter(|p| p.0 >= 0.0 && p.0 < w && p.1 >= 0.0 && p.1 < h)
-        .or_else(|| {
-            json.get("footY")
-                .and_then(as_num)
-                .filter(|y| *y >= 0.0 && *y < h)
-                .map(|y| (((w - 1.0) / 2.0).round(), y))
-        })
-        .unwrap_or((
-            (w * DEFAULT_PIVOT_PCT.0).round(),
-            (h * DEFAULT_PIVOT_PCT.1).round(),
-        ));
-    format!("{}×{}", num_text(x), num_text(y))
-}
-
-fn canvas_size(json: &serde_json::Value) -> (f64, f64) {
-    let pair = json
-        .get("size")
-        .and_then(|v| v.as_array())
-        .filter(|a| a.len() == 2);
-    let pick = |i: usize| -> f64 {
-        let n = pair.and_then(|a| as_num(&a[i])).unwrap_or(0.0);
-        if n != 0.0 {
-            n
-        } else {
-            400.0
-        }
-    };
-    (pick(0), pick(1))
-}
-
-fn as_num(v: &serde_json::Value) -> Option<f64> {
-    v.as_f64()
-        .or_else(|| v.as_str().and_then(|s| s.trim().parse().ok()))
-}
-
-fn num_text(n: f64) -> String {
-    if n.fract() == 0.0 && n.abs() < 9e15 {
-        format!("{}", n as i64)
-    } else {
-        format!("{n}")
-    }
-}
-
-#[tauri::command]
-pub fn skin_pivot(app: AppHandle, folder: Option<String>) -> String {
-    let picked = folder
-        .map(|f| f.trim().to_string())
-        .filter(|f| !f.is_empty() && !f.contains(['/', '\\']) && !f.starts_with('.'));
-    let name = picked.unwrap_or_else(|| {
-        let saved = crate::prefs::load(&app).skin;
-        if saved.trim().is_empty() {
-            crate::prefs::DEFAULT_SKIN.to_string()
-        } else {
-            saved
-        }
-    });
-    let text =
-        skins_dir(&app).and_then(|dir| fs::read_to_string(dir.join(&name).join(SKIN_JSON)).ok());
-    pivot_text(text.as_deref())
 }

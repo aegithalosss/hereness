@@ -273,7 +273,8 @@ lifted = Picked up
   function catalog(list, en) {
     return allFiles(list).map((f) => {
       const parsed = byLang(f, en);
-      return { id: f.id, name: parsed.name || f.id };
+      const name = f.read_warning ? `${f.id}${en ? " (read error; save as UTF-8)" : "（读取异常，请另存 UTF-8）"}` : parsed.name || f.id;
+      return { id: f.id, name };
     });
   }
 

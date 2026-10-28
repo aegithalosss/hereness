@@ -37,6 +37,10 @@ function readSkinConfig(rawDir, W, H) {
     return out;
   }
   out.fromFile = true;
+  const object = (value) => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  if (j.size !== undefined && !(Array.isArray(j.size) && j.size.length === 2 && j.size.every((n) => typeof n === "number" && Number.isFinite(n) && n > 0))) {
+    out.warnings.push("skin.json 的 size 要写成两个正数的数组：运行时先用默认 400 × 400");
+  }
   const pair = (v) => (Array.isArray(v) && v.length === 2 && v.every((n) => Number.isFinite(Number(n))) ? [Number(v[0]), Number(v[1])] : null);
   const inCanvas = (v) => v && v[0] >= 0 && v[0] < W && v[1] >= 0 && v[1] < H;
 
@@ -54,10 +58,19 @@ function readSkinConfig(rawDir, W, H) {
   if (sp && inCanvas(sp)) { out.shadowPivot = sp; out.shadowFromFile = true; }
   else if (sp) out.warnings.push(`skin.json 的 shadow.pivot ${JSON.stringify(j.shadow.pivot)} 超出了画布（0–${W - 1} / 0–${H - 1}）：先用默认 ${defaultShadow(W, H).join(", ")}`);
 
-  for (const [k, v] of Object.entries((j.rig && j.rig.idle && j.rig.idle.pivots) || {})) if (pair(v)) out.rigPivots[k] = pair(v);
+  const pivots = j.rig && j.rig.idle && j.rig.idle.pivots;
+  if (pivots !== undefined && (!pivots || typeof pivots !== "object" || Array.isArray(pivots))) out.warnings.push("skin.json 的 rig.idle.pivots 要写成坐标表：忽略该项，用默认旋转点");
+  for (const [k, v] of Object.entries(object(pivots))) {
+    if (pair(v) && inCanvas(pair(v))) out.rigPivots[k] = pair(v);
+    else out.warnings.push(`skin.json 的 rig.idle.pivots.${k} 不是画布内的两数坐标：忽略该项，用默认旋转点`);
+  }
   for (const [k, v] of Object.entries(j.overlays && typeof j.overlays === "object" ? j.overlays : {})) {
-    const on = Array.isArray(v && v.on) ? v.on.map(String) : [];
-    const pv = pair(v && v.pivot);
+    const on = Array.isArray(v && v.on) ? v.on.filter((n) => typeof n === "string") : [];
+    if (Array.isArray(v && v.on) && on.length !== v.on.length) out.warnings.push(`skin.json 的 overlays.${k}.on 含非字符串：忽略这些条目`);
+    if (v && v.on !== undefined && !Array.isArray(v.on)) out.warnings.push(`skin.json 的 overlays.${k}.on 不是数组：忽略该项`);
+    const parsedPivot = pair(v && v.pivot);
+    const pv = parsedPivot && inCanvas(parsedPivot) ? parsedPivot : null;
+    if (v && v.pivot !== undefined && !pv) out.warnings.push(`skin.json 的 overlays.${k}.pivot 不是画布内的两数坐标：先用默认中心`);
     out.overlays[k] = { ...(v && typeof v === "object" ? v : {}), on, pivot: pv };
     if (pv) out.overlayPivots[k] = pv;
     if (!on.length) out.warnings.push(`skin.json 的 overlays.${k} 没写 on（要填这只皮肤里它叠在哪几张图上，比如 "on": ["thinking"]）：这个特效不会显示`);
